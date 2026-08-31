@@ -1,0 +1,48 @@
+@import 'leaflet/dist/leaflet.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased font-sans min-h-screen selection:bg-brand-500 selection:text-white;
+  }
+}
+
+/* Custom animations & glow effects */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.01); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s infinite ease-in-out;
+}
+
+/* Fix Leaflet pane z-index inside Tailwind cards */
+.leaflet-container {
+  font-family: inherit;
+  border-radius: 1.5rem;
+  z-index: 10;
+}
+
+/* Print styling for Emergency Summaries & Reports */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .print-page-break {
+    page-break-before: always;
+  }
+  .card-print {
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+}
