@@ -1,5 +1,5 @@
 /**
- * StrokeShield AI — Facial Asymmetry Module Types
+ * StrokeShield AI — Facial Asymmetry Module Types & Schemas
  */
 
 export interface Point2D {
@@ -19,33 +19,45 @@ export interface NormalizedLandmark {
 }
 
 /**
+ * Symmetry Axis Definition (Line passing through Sellion and Menton)
+ */
+export interface SymmetryAxis {
+  start: Point2D; // Sellion / Superior Midline Anchor
+  end: Point2D;   // Menton / Inferior Midline Anchor
+  angleDeg: number;
+  // Line Equation: Ax + By + C = 0
+  A: number;
+  B: number;
+  C: number;
+}
+
+/**
  * Standardized Semantic Anatomical Face Keypoints
- * Extracted from MediaPipe 478 3D landmark mesh
  */
 export interface FaceKeypoints {
   // Centerline References (Sellion -> Subnasale -> Chin)
   midline: {
-    forehead: Point2D;     // Index 10
-    sellion: Point2D;      // Index 168 (Nose bridge / Glabella)
-    noseTip: Point2D;      // Index 1
-    subnasale: Point2D;    // Index 2
+    forehead: Point2D;       // Index 10
+    sellion: Point2D;        // Index 168 (Nose bridge / Glabella)
+    noseTip: Point2D;        // Index 1
+    subnasale: Point2D;      // Index 2
     upperLipCenter: Point2D; // Index 0
     lowerLipCenter: Point2D; // Index 17
-    chin: Point2D;         // Index 152
+    chin: Point2D;           // Index 152
   };
 
   // Eyes
   eyes: {
-    leftPupil: Point2D;       // Index 468
-    rightPupil: Point2D;      // Index 473
-    leftOuterCanthus: Point2D; // Index 263
-    leftInnerCanthus: Point2D; // Index 362
-    leftUpperLid: Point2D;     // Index 386
-    leftLowerLid: Point2D;     // Index 374
-    rightOuterCanthus: Point2D; // Index 33
-    rightInnerCanthus: Point2D; // Index 133
-    rightUpperLid: Point2D;    // Index 159
-    rightLowerLid: Point2D;    // Index 145
+    leftPupil: Point2D;         // Index 468
+    rightPupil: Point2D;        // Index 473
+    leftOuterCanthus: Point2D;   // Index 263
+    leftInnerCanthus: Point2D;   // Index 362
+    leftUpperLid: Point2D;       // Index 386
+    leftLowerLid: Point2D;       // Index 374
+    rightOuterCanthus: Point2D;  // Index 33
+    rightInnerCanthus: Point2D;  // Index 133
+    rightUpperLid: Point2D;      // Index 159
+    rightLowerLid: Point2D;      // Index 145
   };
 
   // Eyebrows
@@ -85,10 +97,11 @@ export interface FaceKeypoints {
   };
 
   // Bounding & Reference Metrics
-  interOcularDistance: number; // Reference Scale Unit (Distance between Left & Right Pupils)
+  interOcularDistance: number; // Reference Scale Unit S (Distance between Left & Right Pupils)
   faceWidth: number;
   faceHeight: number;
   faceCenter: Point2D;
+  symmetryAxis: SymmetryAxis;
   rawLandmarks?: NormalizedLandmark[];
 }
 
@@ -100,7 +113,8 @@ export type RejectionReason =
   | 'FACE_NOT_FRONTAL'
   | 'POOR_LIGHTING'
   | 'EXCESSIVE_MOTION'
-  | 'BLURRY_FRAME';
+  | 'BLURRY_FRAME'
+  | 'INCOMPLETE_LANDMARKS';
 
 export interface HeadPose {
   yawDeg: number;       // Horizontal turn (- left, + right)
@@ -128,6 +142,14 @@ export interface RegionalAsymmetryScores {
   jaw: number;       // 0.0 - 100.0%
 }
 
+export interface RegionalRawErrors {
+  eyes: number;      // Dimensionless raw error e_i
+  eyebrows: number;  // Dimensionless raw error e_i
+  mouth: number;     // Dimensionless raw error e_i
+  cheeks: number;    // Dimensionless raw error e_i
+  jaw: number;       // Dimensionless raw error e_i
+}
+
 export interface SingleFrameAsymmetryResult {
   frameIndex: number;
   timestamp: number;
@@ -135,52 +157,73 @@ export interface SingleFrameAsymmetryResult {
   quality: FrameQualityCheck;
   landmarks?: FaceKeypoints;
   headPose: HeadPose;
-  regionalScores: RegionalAsymmetryScores;
-  overallAsymmetryPercent: number; // 0.0 - 100.0%
-  symmetryPercent: number;         // 100.0 - overallAsymmetryPercent
+  rawNormalizedError: number;        // Dimensionless aggregate raw error
+  rawRegionalErrors: RegionalRawErrors;
+  regionalScores: RegionalAsymmetryScores; // 0.0 - 100.0% display percentages
+  overallAsymmetryPercent: number;   // 0.0 - 100.0% display percentage
+  symmetryPercent: number;           // 100.0 - overallAsymmetryPercent
 }
 
 export type AnalysisQualityTier = 'HIGH' | 'MEDIUM' | 'LOW';
 
-export interface MultiFrameAggregatedResult {
+/**
+ * Typed Result Object Schema (Section 16 Specification)
+ */
+export interface FaceAnalysisTypedResult {
+  analysisType: 'FACIAL_ASYMMETRY';
+  overallAsymmetryPercent: number | null;
+  symmetryPercent: number | null;
+  rawNormalizedError: number | null;
+  regionalScores: {
+    eyes: number | null;
+    eyebrows: number | null;
+    cheeks: number | null;
+    mouth: number | null;
+    jaw: number | null;
+  };
+  rawRegionalErrors: {
+    eyes: number | null;
+    eyebrows: number | null;
+    cheeks: number | null;
+    mouth: number | null;
+    jaw: number | null;
+  };
   totalFrames: number;
-  validFramesCount: number;
-  rejectedFramesCount: number;
-  rejectionBreakdown: Record<RejectionReason, number>;
-
-  // Continuous Asymmetry & Symmetry Values
-  medianOverallAsymmetryPercent: number; // e.g. 12.4%
-  medianSymmetryPercent: number;         // e.g. 87.6%
-  meanOverallAsymmetryPercent: number;
-
-  // Regional Breakdown (Medians across valid frames)
-  medianRegionalScores: RegionalAsymmetryScores;
-
-  // Dispersion & Stability Metrics
-  standardDeviation: number; // ± %
-  interQuartileRange: number;
-  isStableMeasurement: boolean;
-
-  // Technical Analysis Quality
+  validFrames: number;
+  rejectedFrames: number;
+  frameAcceptanceRate: number;
+  measurementVariability: number | null; // Median Absolute Deviation (MAD) or Std Dev
   analysisQuality: AnalysisQualityTier;
   qualityExplanation: string;
-
-  // Salient Regional Flag
-  highestAsymmetryRegion: string;       // e.g. "Mouth"
-  highestAsymmetryRegionScore: number;  // e.g. 18.6%
-
-  // Head Pose Averages across valid frames
+  highestAsymmetryRegion: string | null;
+  highestAsymmetryRegionScore: number | null;
   averageHeadPose: {
     yaw: number;
     pitch: number;
     roll: number;
   };
-
-  // Model Metadata & Provenance
   modelName: string;
   modelVersion: string;
   timestamp: string;
+
+  // Convenient Aliases
+  medianOverallAsymmetryPercent?: number | null;
+  meanOverallAsymmetryPercent?: number | null;
+  medianSymmetryPercent?: number | null;
+  medianRegionalScores?: {
+    eyes: number | null;
+    eyebrows: number | null;
+    cheeks: number | null;
+    mouth: number | null;
+    jaw: number | null;
+  };
+  validFramesCount?: number;
+  rejectedFramesCount?: number;
+  isStableMeasurement?: boolean;
+  standardDeviation?: number;
 }
+
+export type MultiFrameAggregatedResult = FaceAnalysisTypedResult;
 
 export type FaceAnalysisState =
   | 'WAITING'         // Waiting for user to start / position face
@@ -190,3 +233,32 @@ export type FaceAnalysisState =
   | 'COMPLETED'       // Analysis complete with valid result
   | 'RETRY_REQUIRED'  // Low quality -> Prompt retry
   | 'ERROR';          // Camera / Model failure
+
+/**
+ * Validation Dataset & Ground-Truth Schema (Section 23 & 24)
+ */
+export interface ValidationSample {
+  sample_id: string;
+  ground_truth_asymmetry: number | null; // e.g. from clinical landmark reference
+  ground_truth_label: string | null;     // e.g. 'NORMAL', 'UNILATERAL_DROOP'
+  predicted_asymmetry: number;
+  raw_normalized_error?: number;
+  analysis_quality: string;
+  valid_frame_count: number;
+}
+
+export interface ValidationMetrics {
+  sampleCount: number;
+  status: 'DATASET_CONFIGURED' | 'DATASET_NOT_CONFIGURED';
+  statusMessage: string;
+  mae?: number;
+  rmse?: number;
+  bias?: number;
+  pearsonCorrelation?: number;
+  sensitivity?: number;
+  specificity?: number;
+  precision?: number;
+  recall?: number;
+  f1Score?: number;
+  rocAuc?: number;
+}

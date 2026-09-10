@@ -2,12 +2,12 @@
  * StrokeShield AI — MediaPipe Face Landmarker Integration
  * 
  * Uses @mediapipe/tasks-vision to extract 478 3D facial landmarks from browser video frames.
- * Maps raw landmark indices to semantic anatomical keypoints.
+ * Maps raw landmark indices into standardized anatomical keypoints and facial symmetry axis.
  */
 
 import { FilesetResolver, FaceLandmarker, FaceLandmarkerResult } from '@mediapipe/tasks-vision';
 import { FACE_ANALYSIS_CONFIG } from './faceAnalysisConfig';
-import { FaceKeypoints, NormalizedLandmark, Point2D } from './types';
+import { FaceKeypoints, NormalizedLandmark, Point2D, SymmetryAxis } from './types';
 
 export class FaceLandmarkService {
   private static landmarkerInstance: FaceLandmarker | null = null;
@@ -133,8 +133,7 @@ export class FaceLandmarkService {
       };
     };
 
-    // Pupils / Eye Centers
-    // MediaPipe landmarks 468 (Left Iris/Pupil) and 473 (Right Iris/Pupil)
+    // Pupils / Eye Centers (468 Left Iris, 473 Right Iris)
     const leftPupil = landmarks[468] ? pt(468) : {
       x: (pt(362).x + pt(263).x) / 2,
       y: (pt(386).y + pt(374).y) / 2,
@@ -144,16 +143,17 @@ export class FaceLandmarkService {
       y: (pt(159).y + pt(145).y) / 2,
     };
 
-    // Inter-Ocular Distance (IOD) — Primary anatomical scale reference unit
+    // Inter-Ocular Distance (IOD) — Primary anatomical scale reference unit S
     const interOcularDistance = Math.sqrt(
       Math.pow(leftPupil.x - rightPupil.x, 2) + Math.pow(leftPupil.y - rightPupil.y, 2)
     ) || 1.0;
 
-    // Face Bounding dimensions from lateral landmarks (454 right ear/zygoma, 234 left ear/zygoma, 10 forehead, 152 chin)
+    // Lateral face boundaries (454 right, 234 left, 10 forehead, 152 chin)
     const leftTragus = pt(234);
     const rightTragus = pt(454);
     const forehead = pt(10);
     const chin = pt(152);
+    const sellion = pt(168);
 
     const faceWidth = Math.sqrt(
       Math.pow(rightTragus.x - leftTragus.x, 2) + Math.pow(rightTragus.y - leftTragus.y, 2)
@@ -164,6 +164,23 @@ export class FaceLandmarkService {
     const faceCenter: Point2D = {
       x: (leftTragus.x + rightTragus.x) / 2,
       y: (forehead.y + chin.y) / 2,
+    };
+
+    // Construct Symmetry Axis passing through Sellion (168) and Menton/Chin (152)
+    // Line equation: (y2 - y1)x - (x2 - x1)y + (x2*y1 - y2*x1) = 0 -> Ax + By + C = 0
+    const A = chin.y - sellion.y;
+    const B = -(chin.x - sellion.x);
+    const C = chin.x * sellion.y - chin.y * sellion.x;
+    const angleRad = Math.atan2(chin.y - sellion.y, chin.x - sellion.x);
+    const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1));
+
+    const symmetryAxis: SymmetryAxis = {
+      start: sellion,
+      end: chin,
+      angleDeg,
+      A,
+      B,
+      C,
     };
 
     return {
@@ -220,6 +237,7 @@ export class FaceLandmarkService {
       faceWidth,
       faceHeight,
       faceCenter,
+      symmetryAxis,
       rawLandmarks: landmarks,
     };
   }

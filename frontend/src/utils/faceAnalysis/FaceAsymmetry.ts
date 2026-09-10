@@ -1,39 +1,63 @@
 /**
  * StrokeShield AI — Mathematical Facial Asymmetry Calculation Engine
  * 
- * Provides transparent, scale-invariant, and position-invariant bilateral asymmetry measurements.
- * Normalizes all measurements relative to anatomical Inter-Ocular Distance (IOD).
+ * Implements:
+ * 1. Symmetry axis reflection / mirror transformation (L_reflected across facial midline)
+ * 2. Point-level Euclidean error comparison (d_i = ||L_reflected - R||)
+ * 3. Scale normalization by anatomical Inter-Ocular Distance (e_i = d_i / S)
+ * 4. Region-level robust median aggregation across anatomical bilateral pairs
+ * 5. Weighted composite raw normalized error
+ * 6. Explicit separation of RAW NORMALIZED ERROR from DISPLAY PERCENTAGE
  * 
  * IMPORTANT MEDICAL SAFETY:
- * - Represents geometric facial asymmetry percentage only.
+ * - Geometric measurement only.
  * - Does NOT calculate stroke probability or clinical diagnostic score.
  */
 
-import { FACE_ANALYSIS_CONFIG } from './faceAnalysisConfig';
+import { FACE_ANALYSIS_CONFIG, LandmarkPair } from './faceAnalysisConfig';
 import { 
   FaceKeypoints, 
   Point2D, 
   RegionalAsymmetryScores, 
+  RegionalRawErrors,
   SingleFrameAsymmetryResult,
   FrameQualityCheck 
 } from './types';
 
 export class FaceAsymmetryCalculator {
   /**
-   * Perpendicular distance from a 2D point (x0, y0) to the line passing through (x1, y1) and (x2, y2).
+   * Mathematically reflect a 2D point (x, y) across a line defined by (p1 -> p2).
+   * Line equation: (y2 - y1)x - (x2 - x1)y + (x2*y1 - y2*x1) = 0 -> Ax + By + C = 0
    */
-  public static pointToLineDistance(point: Point2D, lineStart: Point2D, lineEnd: Point2D): number {
-    const x0 = point.x;
-    const y0 = point.y;
+  public static reflectPointAcrossLine(
+    point: Point2D, 
+    lineStart: Point2D, 
+    lineEnd: Point2D
+  ): Point2D {
+    const x = point.x;
+    const y = point.y;
     const x1 = lineStart.x;
     const y1 = lineStart.y;
     const x2 = lineEnd.x;
     const y2 = lineEnd.y;
 
-    const numerator = Math.abs((y2 - y1) * x0 - (x2 - x1) * y0 + x2 * y1 - y2 * x1);
-    const denominator = Math.sqrt(Math.pow(y2 - y1, 2) + Math.pow(x2 - x1, 2));
+    const A = y2 - y1;
+    const B = -(x2 - x1);
+    const C = x2 * y1 - y2 * x1;
 
-    return denominator === 0 ? 0 : numerator / denominator;
+    const denom = A * A + B * B;
+    if (denom === 0) {
+      return { x, y };
+    }
+
+    const factor = (2 * (A * x + B * y + C)) / denom;
+    const xReflected = x - A * factor;
+    const yReflected = y - B * factor;
+
+    return {
+      x: Number(xReflected.toFixed(2)),
+      y: Number(yReflected.toFixed(2)),
+    };
   }
 
   /**
@@ -44,7 +68,39 @@ export class FaceAsymmetryCalculator {
   }
 
   /**
-   * Calculate regional and overall facial asymmetry percentages from standardized keypoints.
+   * Calculate median of a numerical array.
+   */
+  public static calculateMedian(values: number[]): number {
+    if (values.length === 0) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    if (sorted.length % 2 !== 0) {
+      return sorted[mid];
+    }
+    return (sorted[mid - 1] + sorted[mid]) / 2.0;
+  }
+
+  /**
+   * Calculate normalized point-level reflection asymmetry error for a bilateral pair:
+   * 1. Reflect Left point across facial symmetry midline axis
+   * 2. Compute Euclidean distance: d_i = ||L_reflected - R||
+   * 3. Normalize by scale S (Inter-Ocular Distance): e_i = d_i / S
+   */
+  public static calculatePointPairError(
+    leftPoint: Point2D,
+    rightPoint: Point2D,
+    axisStart: Point2D,
+    axisEnd: Point2D,
+    scaleS: number
+  ): number {
+    const s = scaleS > 0 ? scaleS : 1.0;
+    const leftReflected = this.reflectPointAcrossLine(leftPoint, axisStart, axisEnd);
+    const distance = this.euclideanDistance(leftReflected, rightPoint);
+    return distance / s; // Dimensionless normalized error
+  }
+
+  /**
+   * Calculate single frame asymmetry from standardized keypoints.
    */
   public static calculateFacialAsymmetry(
     keypoints: FaceKeypoints,
@@ -52,129 +108,101 @@ export class FaceAsymmetryCalculator {
     frameIndex: number = 0,
     timestamp: number = Date.now()
   ): SingleFrameAsymmetryResult {
-    const { midline, eyes, eyebrows, mouth, cheeks, jaw, interOcularDistance } = keypoints;
-    const iod = interOcularDistance > 0 ? interOcularDistance : 1.0;
+    const scaleS = keypoints.interOcularDistance > 0 ? keypoints.interOcularDistance : 1.0;
+    const axisStart = keypoints.midline.sellion;
+    const axisEnd = keypoints.midline.chin;
 
-    // Facial Midline Reference Vector: Sellion (Nose Bridge) -> Menton (Chin)
-    const lineStart = midline.sellion;
-    const lineEnd = midline.chin;
+    const { eyes, eyebrows, mouth, cheeks, jaw } = keypoints;
 
-    // ==========================================
-    // 1. MOUTH & NASOLABIAL ASYMMETRY (Weight: 40%)
-    // ==========================================
-    // A. Cheilions (Mouth Corners)
-    const leftCheilionDist = this.pointToLineDistance(mouth.leftCheilion, lineStart, lineEnd);
-    const rightCheilionDist = this.pointToLineDistance(mouth.rightCheilion, lineStart, lineEnd);
-    const cheilionLateralDeltaNorm = Math.abs(leftCheilionDist - rightCheilionDist) / iod;
-    const cheilionVerticalDeltaNorm = Math.abs(mouth.leftCheilion.y - mouth.rightCheilion.y) / iod;
+    // =========================================================================
+    // 1. POINT-LEVEL REFLECTION ERRORS PER ANATOMICAL REGION
+    // =========================================================================
 
-    // B. Upper / Lower Lip Symmetry
-    const leftUpperLipDist = this.pointToLineDistance(mouth.leftUpperLip, lineStart, lineEnd);
-    const rightUpperLipDist = this.pointToLineDistance(mouth.rightUpperLip, lineStart, lineEnd);
-    const upperLipDeltaNorm = Math.abs(leftUpperLipDist - rightUpperLipDist) / iod;
+    // A. EYES
+    const eyesErrors: number[] = [
+      this.calculatePointPairError(eyes.leftPupil, eyes.rightPupil, axisStart, axisEnd, scaleS) * 1.5,
+      this.calculatePointPairError(eyes.leftOuterCanthus, eyes.rightOuterCanthus, axisStart, axisEnd, scaleS) * 1.2,
+      this.calculatePointPairError(eyes.leftInnerCanthus, eyes.rightInnerCanthus, axisStart, axisEnd, scaleS),
+      this.calculatePointPairError(eyes.leftUpperLid, eyes.rightUpperLid, axisStart, axisEnd, scaleS) * 1.2,
+      this.calculatePointPairError(eyes.leftLowerLid, eyes.rightLowerLid, axisStart, axisEnd, scaleS) * 1.2,
+    ];
+    const rawEyesError = this.calculateMedian(eyesErrors);
 
-    const leftLowerLipDist = this.pointToLineDistance(mouth.leftLowerLip, lineStart, lineEnd);
-    const rightLowerLipDist = this.pointToLineDistance(mouth.rightLowerLip, lineStart, lineEnd);
-    const lowerLipDeltaNorm = Math.abs(leftLowerLipDist - rightLowerLipDist) / iod;
+    // B. EYEBROWS
+    const eyebrowsErrors: number[] = [
+      this.calculatePointPairError(eyebrows.leftInner, eyebrows.rightInner, axisStart, axisEnd, scaleS) * 1.2,
+      this.calculatePointPairError(eyebrows.leftPeak, eyebrows.rightPeak, axisStart, axisEnd, scaleS) * 1.5,
+      this.calculatePointPairError(eyebrows.leftOuter, eyebrows.rightOuter, axisStart, axisEnd, scaleS),
+    ];
+    const rawEyebrowsError = this.calculateMedian(eyebrowsErrors);
 
-    // C. Nasolabial Fold Symmetry
-    const leftNasolabialDist = this.pointToLineDistance(mouth.leftNasolabial, lineStart, lineEnd);
-    const rightNasolabialDist = this.pointToLineDistance(mouth.rightNasolabial, lineStart, lineEnd);
-    const nasolabialDeltaNorm = Math.abs(leftNasolabialDist - rightNasolabialDist) / iod;
+    // C. CHEEKS (Zygomatic prominence & contour)
+    const cheeksErrors: number[] = [
+      this.calculatePointPairError(cheeks.leftCheek, cheeks.rightCheek, axisStart, axisEnd, scaleS) * 1.4,
+    ];
+    const rawCheeksError = this.calculateMedian(cheeksErrors);
 
-    const rawMouthDelta = 
-      cheilionVerticalDeltaNorm * 0.45 +
-      cheilionLateralDeltaNorm * 0.25 +
-      nasolabialDeltaNorm * 0.15 +
-      upperLipDeltaNorm * 0.08 +
-      lowerLipDeltaNorm * 0.07;
+    // D. MOUTH & NASOLABIAL (Cheilions, lips, nasolabial folds)
+    const mouthErrors: number[] = [
+      this.calculatePointPairError(mouth.leftCheilion, mouth.rightCheilion, axisStart, axisEnd, scaleS) * 2.0,
+      this.calculatePointPairError(mouth.leftUpperLip, mouth.rightUpperLip, axisStart, axisEnd, scaleS) * 1.2,
+      this.calculatePointPairError(mouth.leftLowerLip, mouth.rightLowerLip, axisStart, axisEnd, scaleS) * 1.2,
+      this.calculatePointPairError(mouth.leftNasolabial, mouth.rightNasolabial, axisStart, axisEnd, scaleS) * 1.3,
+    ];
+    const rawMouthError = this.calculateMedian(mouthErrors);
 
-    const mouthScore = Math.max(0, Math.min(100, Number((rawMouthDelta * FACE_ANALYSIS_CONFIG.SCALING_FACTORS.mouth).toFixed(1))));
+    // E. JAW / LOWER FACE (Gonion angle & mandibular line)
+    const jawErrors: number[] = [
+      this.calculatePointPairError(jaw.leftGonion, jaw.rightGonion, axisStart, axisEnd, scaleS) * 1.4,
+      this.calculatePointPairError(jaw.leftJawline, jaw.rightJawline, axisStart, axisEnd, scaleS),
+    ];
+    const rawJawError = this.calculateMedian(jawErrors);
 
-    // ==========================================
-    // 2. EYES ASYMMETRY (Weight: 20%)
-    // ==========================================
-    // A. Outer Canthi & Pupils
-    const leftOuterCanthusDist = this.pointToLineDistance(eyes.leftOuterCanthus, lineStart, lineEnd);
-    const rightOuterCanthusDist = this.pointToLineDistance(eyes.rightOuterCanthus, lineStart, lineEnd);
-    const outerCanthusDeltaNorm = Math.abs(leftOuterCanthusDist - rightOuterCanthusDist) / iod;
-    const pupilVerticalDeltaNorm = Math.abs(eyes.leftPupil.y - eyes.rightPupil.y) / iod;
-
-    // B. Palpebral Aperture (Eye Opening Height)
-    const leftAperture = Math.abs(eyes.leftLowerLid.y - eyes.leftUpperLid.y);
-    const rightAperture = Math.abs(eyes.rightLowerLid.y - eyes.rightUpperLid.y);
-    const apertureDeltaNorm = Math.abs(leftAperture - rightAperture) / iod;
-
-    const rawEyesDelta = 
-      pupilVerticalDeltaNorm * 0.45 +
-      apertureDeltaNorm * 0.35 +
-      outerCanthusDeltaNorm * 0.20;
-
-    const eyesScore = Math.max(0, Math.min(100, Number((rawEyesDelta * FACE_ANALYSIS_CONFIG.SCALING_FACTORS.eyes).toFixed(1))));
-
-    // ==========================================
-    // 3. EYEBROWS ASYMMETRY (Weight: 15%)
-    // ==========================================
-    const leftBrowPeakDist = this.pointToLineDistance(eyebrows.leftPeak, lineStart, lineEnd);
-    const rightBrowPeakDist = this.pointToLineDistance(eyebrows.rightPeak, lineStart, lineEnd);
-    const browPeakLateralDeltaNorm = Math.abs(leftBrowPeakDist - rightBrowPeakDist) / iod;
-    const browPeakVerticalDeltaNorm = Math.abs(eyebrows.leftPeak.y - eyebrows.rightPeak.y) / iod;
-
-    const leftBrowInnerDist = this.pointToLineDistance(eyebrows.leftInner, lineStart, lineEnd);
-    const rightBrowInnerDist = this.pointToLineDistance(eyebrows.rightInner, lineStart, lineEnd);
-    const browInnerLateralDeltaNorm = Math.abs(leftBrowInnerDist - rightBrowInnerDist) / iod;
-    const browInnerVerticalDeltaNorm = Math.abs(eyebrows.leftInner.y - eyebrows.rightInner.y) / iod;
-
-    const rawEyebrowsDelta = 
-      browPeakVerticalDeltaNorm * 0.50 +
-      browInnerVerticalDeltaNorm * 0.25 +
-      browPeakLateralDeltaNorm * 0.15 +
-      browInnerLateralDeltaNorm * 0.10;
-
-    const eyebrowsScore = Math.max(0, Math.min(100, Number((rawEyebrowsDelta * FACE_ANALYSIS_CONFIG.SCALING_FACTORS.eyebrows).toFixed(1))));
-
-    // ==========================================
-    // 4. CHEEKS ASYMMETRY (Weight: 15%)
-    // ==========================================
-    const leftCheekDist = this.pointToLineDistance(cheeks.leftCheek, lineStart, lineEnd);
-    const rightCheekDist = this.pointToLineDistance(cheeks.rightCheek, lineStart, lineEnd);
-    const cheekLateralDeltaNorm = Math.abs(leftCheekDist - rightCheekDist) / iod;
-    const cheekVerticalDeltaNorm = Math.abs(cheeks.leftCheek.y - cheeks.rightCheek.y) / iod;
-
-    const rawCheeksDelta = cheekLateralDeltaNorm * 0.65 + cheekVerticalDeltaNorm * 0.35;
-    const cheeksScore = Math.max(0, Math.min(100, Number((rawCheeksDelta * FACE_ANALYSIS_CONFIG.SCALING_FACTORS.cheeks).toFixed(1))));
-
-    // ==========================================
-    // 5. JAW / MANDIBLE ASYMMETRY (Weight: 10%)
-    // ==========================================
-    const leftGonionDist = this.pointToLineDistance(jaw.leftGonion, lineStart, lineEnd);
-    const rightGonionDist = this.pointToLineDistance(jaw.rightGonion, lineStart, lineEnd);
-    const gonionLateralDeltaNorm = Math.abs(leftGonionDist - rightGonionDist) / iod;
-    const gonionVerticalDeltaNorm = Math.abs(jaw.leftGonion.y - jaw.rightGonion.y) / iod;
-
-    const rawJawDelta = gonionLateralDeltaNorm * 0.70 + gonionVerticalDeltaNorm * 0.30;
-    const jawScore = Math.max(0, Math.min(100, Number((rawJawDelta * FACE_ANALYSIS_CONFIG.SCALING_FACTORS.jaw).toFixed(1))));
-
-    // ==========================================
-    // 6. COMPOSITE OVERALL ASYMMETRY & SYMMETRY %
-    // ==========================================
-    const regionalScores: RegionalAsymmetryScores = {
-      mouth: mouthScore,
-      eyes: eyesScore,
-      eyebrows: eyebrowsScore,
-      cheeks: cheeksScore,
-      jaw: jawScore,
+    // =========================================================================
+    // 2. RAW NORMALIZED ASYMMETRY ERROR (Section 11 Concept A)
+    // =========================================================================
+    const rawRegionalErrors: RegionalRawErrors = {
+      mouth: Number(rawMouthError.toFixed(4)),
+      eyes: Number(rawEyesError.toFixed(4)),
+      eyebrows: Number(rawEyebrowsError.toFixed(4)),
+      cheeks: Number(rawCheeksError.toFixed(4)),
+      jaw: Number(rawJawError.toFixed(4)),
     };
 
-    const { REGIONAL_WEIGHTS } = FACE_ANALYSIS_CONFIG;
-    const weightedSum = 
-      regionalScores.mouth * REGIONAL_WEIGHTS.mouth +
-      regionalScores.eyes * REGIONAL_WEIGHTS.eyes +
-      regionalScores.eyebrows * REGIONAL_WEIGHTS.eyebrows +
-      regionalScores.cheeks * REGIONAL_WEIGHTS.cheeks +
-      regionalScores.jaw * REGIONAL_WEIGHTS.jaw;
+    const { REGION_WEIGHTS } = FACE_ANALYSIS_CONFIG;
+    const rawNormalizedError = Number((
+      rawRegionalErrors.mouth * REGION_WEIGHTS.mouth +
+      rawRegionalErrors.eyes * REGION_WEIGHTS.eyes +
+      rawRegionalErrors.eyebrows * REGION_WEIGHTS.eyebrows +
+      rawRegionalErrors.cheeks * REGION_WEIGHTS.cheeks +
+      rawRegionalErrors.jaw * REGION_WEIGHTS.jaw
+    ).toFixed(4));
 
-    const overallAsymmetryPercent = Math.max(0, Math.min(100, Number(weightedSum.toFixed(1))));
+    // =========================================================================
+    // 3. DISPLAY ASYMMETRY PERCENTAGE (Section 11 Concept B)
+    // Formula: display_percentage = 100 * clamp(raw_error / R, 0, 1)
+    // R is the clearly documented display normalization parameter in FACE_ANALYSIS_CONFIG
+    // =========================================================================
+    const { DISPLAY_NORMALIZATION_R, REGIONAL_NORMALIZATION_R } = FACE_ANALYSIS_CONFIG;
+
+    const mouthScore = Number((Math.min(1.0, rawRegionalErrors.mouth / REGIONAL_NORMALIZATION_R.mouth) * 100).toFixed(1));
+    const eyesScore = Number((Math.min(1.0, rawRegionalErrors.eyes / REGIONAL_NORMALIZATION_R.eyes) * 100).toFixed(1));
+    const eyebrowsScore = Number((Math.min(1.0, rawRegionalErrors.eyebrows / REGIONAL_NORMALIZATION_R.eyebrows) * 100).toFixed(1));
+    const cheeksScore = Number((Math.min(1.0, rawRegionalErrors.cheeks / REGIONAL_NORMALIZATION_R.cheeks) * 100).toFixed(1));
+    const jawScore = Number((Math.min(1.0, rawRegionalErrors.jaw / REGIONAL_NORMALIZATION_R.jaw) * 100).toFixed(1));
+
+    const regionalScores: RegionalAsymmetryScores = {
+      mouth: Math.max(0, Math.min(100, mouthScore)),
+      eyes: Math.max(0, Math.min(100, eyesScore)),
+      eyebrows: Math.max(0, Math.min(100, eyebrowsScore)),
+      cheeks: Math.max(0, Math.min(100, cheeksScore)),
+      jaw: Math.max(0, Math.min(100, jawScore)),
+    };
+
+    const overallAsymmetryPercent = Number((
+      Math.min(1.0, rawNormalizedError / DISPLAY_NORMALIZATION_R) * 100
+    ).toFixed(1));
+
     const symmetryPercent = Math.max(0, Math.min(100, Number((100.0 - overallAsymmetryPercent).toFixed(1))));
 
     return {
@@ -184,6 +212,8 @@ export class FaceAsymmetryCalculator {
       quality,
       landmarks: keypoints,
       headPose: quality.headPose,
+      rawNormalizedError,
+      rawRegionalErrors,
       regionalScores,
       overallAsymmetryPercent,
       symmetryPercent,
