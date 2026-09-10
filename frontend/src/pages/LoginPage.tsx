@@ -1,22 +1,23 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   Activity, 
   Lock, 
   Mail, 
-  ShieldCheck, 
-  ArrowRight, 
-  Building2, 
-  Stethoscope, 
   Eye, 
   EyeOff, 
+  ArrowRight, 
   CheckCircle2, 
   Sparkles, 
   AlertCircle,
-  Clock,
-  Navigation,
-  Brain
+  Building2,
+  ShieldCheck,
+  UserPlus,
+  Stethoscope,
+  Camera,
+  FileCheck,
+  SendHorizontal
 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
@@ -26,50 +27,99 @@ export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  // Validate and submit credentials
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setErrorMessage(null);
+
+    if (!email.trim()) {
+      setErrorMessage('Please enter your email address.');
+      return;
+    }
+
+    if (!password.trim()) {
+      setErrorMessage('Please enter your password.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      await login(email.trim(), password);
+      setSuccessMessage('Welcome back, Doctor! 👋');
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 700);
     } catch (err: any) {
-      setError(err.message || 'Invalid email or password. Please verify credentials.');
+      const errorStr = (err?.message || '').toLowerCase();
+      if (!navigator.onLine || errorStr.includes('network') || errorStr.includes('failed to fetch')) {
+        setErrorMessage("We couldn't connect right now. Please check your internet connection.");
+      } else if (errorStr.includes('401') || errorStr.includes('invalid') || errorStr.includes('unauthorized')) {
+        setErrorMessage("Email or password doesn't look right. Please check and try again.");
+      } else {
+        setErrorMessage('Something went wrong on our side. Please try again in a moment.');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleQuickLogin = async (loginFn: () => Promise<void>, targetPath = '/dashboard') => {
-    setError(null);
+  // Demo 1-Click Access
+  const handleDemoLogin = async (
+    loginFn: () => Promise<void>, 
+    doctorDisplayName: string, 
+    targetPath = '/dashboard'
+  ) => {
+    setErrorMessage(null);
     setIsLoading(true);
     try {
       await loginFn();
-      navigate(targetPath);
+      setSuccessMessage(`Welcome back, ${doctorDisplayName}! 👋`);
+      setTimeout(() => {
+        navigate(targetPath);
+      }, 700);
     } catch (err: any) {
-      setError(err.message || 'Demo login failed. Please try again.');
+      setErrorMessage('Something went wrong on our side. Please try again in a moment.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans selection:bg-teal-500 selection:text-white">
-      <div className="max-w-5xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 bg-white rounded-3xl shadow-xl border border-slate-200/80 overflow-hidden">
-        
-        {/* LEFT PANEL: Branding, Value Prop & Hackathon Demo Context */}
-        <div className="lg:col-span-6 bg-gradient-to-br from-slate-900 via-slate-800 to-teal-950 text-white p-8 sm:p-12 flex flex-col justify-between relative overflow-hidden">
-          {/* Subtle Background Glow */}
-          <div className="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 -mb-12 -ml-12 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-between p-4 sm:p-6 lg:p-8 font-sans selection:bg-teal-500 selection:text-white">
+      
+      {/* Top Bar on Mobile */}
+      <div className="max-w-5xl w-full mx-auto flex items-center justify-between lg:hidden mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-teal-700 flex items-center justify-center text-white shadow-xs">
+            <Activity className="w-4 h-4" />
+          </div>
+          <span className="font-extrabold text-base text-slate-900">StrokeShield AI</span>
+        </div>
+        <span className="text-[10px] bg-amber-50 text-amber-900 border border-amber-200 font-bold px-2 py-0.5 rounded-full">
+          DEMO ACCESS
+        </span>
+      </div>
 
-          {/* Header Brand */}
+      {/* Main Two-Section Grid Container */}
+      <div className="max-w-5xl w-full mx-auto my-auto grid grid-cols-1 lg:grid-cols-12 bg-white rounded-3xl shadow-sm border border-slate-200/80 overflow-hidden">
+        
+        {/* ========================================================================= */}
+        {/* LEFT SECTION: WELCOMING INTRODUCTION (Sections 1, 2, 3) */}
+        {/* ========================================================================= */}
+        <div className="lg:col-span-6 bg-slate-900 text-white p-6 sm:p-10 lg:p-12 flex flex-col justify-between space-y-8 relative overflow-hidden order-2 lg:order-1">
+          {/* Subtle Ambient Glow */}
+          <div className="absolute top-0 right-0 -mt-16 -mr-16 w-60 h-60 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 -mb-16 -ml-16 w-60 h-60 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Brand & Introduction */}
           <div className="space-y-6 relative z-10">
+            {/* Logo + Platform Badge */}
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-500 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-teal-500/30">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-teal-500/20">
                 <Activity className="w-7 h-7" />
               </div>
               <div>
@@ -79,238 +129,294 @@ export const LoginPage: React.FC = () => {
                     AI
                   </span>
                 </div>
-                <p className="text-xs text-slate-300 font-medium">Early Triage & Emergency Referral Platform</p>
+                <p className="text-xs text-slate-300 font-medium">AI-Assisted Stroke Screening</p>
               </div>
             </div>
 
-            {/* Purpose Pitch */}
-            <div className="space-y-2">
-              <h2 className="text-xl sm:text-2xl font-black text-white leading-tight">
-                Rapid Clinical Stroke Triage in the Golden Hour.
+            {/* Prominent Friendly Greeting */}
+            <div className="space-y-2 pt-2">
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                Welcome back, Doctor 👋
               </h2>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                StrokeShield AI assists emergency physicians and clinicians with computer-vision facial asymmetry analysis, BE-FAST testing, multi-modal urgency scoring, and road-navigated hospital dispatch.
+              <p className="text-sm font-bold text-teal-300">
+                Screen. Assess. Act faster.
+              </p>
+              <p className="text-xs text-slate-300 leading-relaxed font-normal pt-1">
+                StrokeShield AI supports doctors with AI-assisted analysis of patient symptoms, vitals, facial movement, arm movement and speech.
               </p>
             </div>
 
-            {/* 4 Clinical Pillars */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-start gap-3 text-xs text-slate-200">
-                <div className="w-6 h-6 rounded-lg bg-teal-500/20 border border-teal-400/30 flex items-center justify-center shrink-0 mt-0.5 text-teal-300">
-                  <Brain className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <strong className="text-white block font-bold">Quantitative Landmark Vision</strong>
-                  <span className="text-slate-400 text-[11px]">Continuous 0–100 geometric facial deviation & arm pronator drift tracking.</span>
-                </div>
-              </div>
+            {/* WHAT HAPPENS AFTER YOU SIGN IN? (Section 11) */}
+            <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 sm:p-5 space-y-3">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-300 block">
+                What happens after you sign in?
+              </span>
 
-              <div className="flex items-start gap-3 text-xs text-slate-200">
-                <div className="w-6 h-6 rounded-lg bg-teal-500/20 border border-teal-400/30 flex items-center justify-center shrink-0 mt-0.5 text-teal-300">
-                  <Clock className="w-3.5 h-3.5" />
+              <div className="space-y-2 text-xs text-slate-200">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-teal-900/80 text-teal-300 border border-teal-700/60 font-bold text-[10px] flex items-center justify-center shrink-0">
+                    1
+                  </span>
+                  <span>Add patient details</span>
                 </div>
-                <div>
-                  <strong className="text-white block font-bold">Last Known Well Window</strong>
-                  <span className="text-slate-400 text-[11px]">Calculates elapsed time against 4.5-hour thrombolysis window.</span>
-                </div>
-              </div>
 
-              <div className="flex items-start gap-3 text-xs text-slate-200">
-                <div className="w-6 h-6 rounded-lg bg-teal-500/20 border border-teal-400/30 flex items-center justify-center shrink-0 mt-0.5 text-teal-300">
-                  <Navigation className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-teal-900/80 text-teal-300 border border-teal-700/60 font-bold text-[10px] flex items-center justify-center shrink-0">
+                    2
+                  </span>
+                  <span>Record symptoms and vitals</span>
                 </div>
-                <div>
-                  <strong className="text-white block font-bold">Exact GPS & Road Routing</strong>
-                  <span className="text-slate-400 text-[11px]">Ranks stroke-capable CT/MRI hospitals with turn-by-turn navigation.</span>
+
+                <div className="flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-teal-900/80 text-teal-300 border border-teal-700/60 font-bold text-[10px] flex items-center justify-center shrink-0">
+                    3
+                  </span>
+                  <span>Perform AI-assisted screening (Face, Arm, Speech)</span>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-teal-900/80 text-teal-300 border border-teal-700/60 font-bold text-[10px] flex items-center justify-center shrink-0">
+                    4
+                  </span>
+                  <span>Review the results & confirm clinical decision</span>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-teal-900/80 text-teal-300 border border-teal-700/60 font-bold text-[10px] flex items-center justify-center shrink-0">
+                    5
+                  </span>
+                  <span>Refer urgent cases to nearby stroke centers with GPS</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Demo Notice Footer */}
-          <div className="pt-6 mt-6 border-t border-slate-700/60 text-[11px] text-slate-400 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>Hackathon Prototype Demo • 100% Synthetic Fictional Identities</span>
+          {/* Left Footer Note */}
+          <div className="pt-4 border-t border-slate-800 text-[11px] text-slate-400 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-teal-400 shrink-0" />
+            <span>Designed for emergency stroke triage in the golden hour.</span>
           </div>
         </div>
 
-        {/* RIGHT PANEL: Clean Physician Login Form & 1-Click Demo Profiles */}
-        <div className="lg:col-span-6 p-8 sm:p-12 flex flex-col justify-between space-y-6">
+        {/* ========================================================================= */}
+        {/* RIGHT SECTION: CLEAN LOGIN CARD & DEMO ACCESS (Sections 4, 5, 6, 7) */}
+        {/* ========================================================================= */}
+        <div className="lg:col-span-6 p-6 sm:p-10 lg:p-12 flex flex-col justify-between space-y-6 order-1 lg:order-2">
+          
           <div className="space-y-6">
             
-            {/* Form Header */}
+            {/* Card Header */}
             <div>
-              <div className="inline-flex items-center gap-1.5 bg-teal-50 border border-teal-200 text-teal-900 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-2">
-                Healthcare Provider Access
-              </div>
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Doctor Login</h2>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                Welcome back 👋
+              </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Select an AI-generated demo profile or sign in with authorized credentials.
+                Sign in to continue to your doctor dashboard.
               </p>
             </div>
 
-            {/* 1-CLICK DEMO ACCOUNTS (Section 21) */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Demo Accounts (1-Click Login):
-                </span>
-                <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded">
-                  DEMO ONLY
-                </span>
-              </div>
-
-              {/* Dr. Raha */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin(loginAsDrRaha)}
-                disabled={isLoading}
-                className="w-full p-3 bg-slate-50 hover:bg-teal-50/80 border border-slate-200 hover:border-teal-300 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-teal-700 text-white font-black text-xs flex items-center justify-center shadow-xs">
-                    DR
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-xs text-slate-900 group-hover:text-teal-900">Dr. Raha</span>
-                      <span className="text-[10px] bg-teal-100 text-teal-800 px-1.5 py-0.2 rounded font-bold">Neurologist</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 truncate">
-                      Demo Stroke Care Hospital • Chennai (+91 98765 43210)
-                    </p>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-teal-700 group-hover:translate-x-1 transition-all shrink-0" />
-              </button>
-
-              {/* Dr. Vijay */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin(loginAsDrVijay)}
-                disabled={isLoading}
-                className="w-full p-3 bg-slate-50 hover:bg-cyan-50/80 border border-slate-200 hover:border-cyan-300 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-cyan-700 text-white font-black text-xs flex items-center justify-center shadow-xs">
-                    DV
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-xs text-slate-900 group-hover:text-cyan-900">Dr. Vijay</span>
-                      <span className="text-[10px] bg-cyan-100 text-cyan-800 px-1.5 py-0.2 rounded font-bold">Emergency Specialist</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 truncate">
-                      Demo Neuro Emergency Hospital • Chennai (+91 87654 32109)
-                    </p>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-cyan-700 group-hover:translate-x-1 transition-all shrink-0" />
-              </button>
-
-              {/* Hospital Staff */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin(loginAsDemoHospitalStaff, '/hospital/dashboard')}
-                disabled={isLoading}
-                className="w-full py-2 px-3 bg-purple-50 hover:bg-purple-100/80 border border-purple-200 rounded-xl text-xs font-bold text-purple-900 flex items-center justify-center gap-2 transition-colors cursor-pointer"
-              >
-                <Building2 className="w-3.5 h-3.5 text-purple-700" />
-                <span>Login as Receiving Hospital Staff (Metro Stroke Center)</span>
-              </button>
-            </div>
-
-            {/* Divider */}
-            <div className="relative flex items-center justify-center">
-              <div className="border-t border-slate-200 w-full" />
-              <span className="bg-white px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                or sign in with password
-              </span>
-              <div className="border-t border-slate-200 w-full" />
-            </div>
-
-            {/* Error Message Display */}
-            {error && (
-              <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs font-medium flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                <span>{error}</span>
+            {/* Success Message */}
+            {successMessage && (
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{successMessage}</span>
               </div>
             )}
 
-            {/* Standard Login Form */}
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 block">Email Address</label>
+            {/* Error Message */}
+            {errorMessage && !successMessage && (
+              <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-900 text-xs font-medium flex items-center gap-2 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            {/* Standard Login Form (Section 4) */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              
+              {/* Email Address Field */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Email Address
+                </label>
                 <div className="relative">
                   <input
                     type="email"
+                    autoComplete="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="raha@demo-strokeshield.com"
-                    required
-                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-colors"
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errorMessage) setErrorMessage(null);
+                    }}
+                    placeholder="Enter your email address"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-colors text-slate-900"
                   />
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700 block">Password</label>
-                  <Link
-                    to="/forgot-password"
-                    className="text-[11px] font-bold text-teal-700 hover:text-teal-800"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
+              {/* Password Field with Show/Hide Toggle (Section 9) */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Password
+                </label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    className="w-full pl-9 pr-9 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-colors"
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errorMessage) setErrorMessage(null);
+                    }}
+                    placeholder="Enter your password"
+                    className="w-full pl-9 pr-10 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-colors text-slate-900"
                   />
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                  
+                  {/* Show/Hide Password Button */}
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5"
-                    aria-label="Toggle password visibility"
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 p-0.5 rounded focus:outline-hidden"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
+              {/* Primary Sign In Button (Section 5) */}
               <button
                 type="submit"
-                disabled={isLoading}
-                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black shadow-md shadow-slate-900/10 transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                disabled={isLoading || !!successMessage}
+                className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
               >
                 {isLoading ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Authenticating Provider...</span>
+                    <span>Signing you in...</span>
                   </>
                 ) : (
-                  <span>Sign In with Password</span>
+                  <>
+                    <span>Sign in to Dashboard</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
                 )}
               </button>
             </form>
+
+            {/* DEMO ACCESS SECTION (Sections 6 & 7) */}
+            <div className="pt-2 space-y-3">
+              <div className="relative flex items-center justify-center">
+                <div className="border-t border-slate-200 w-full" />
+                <span className="bg-white px-3 text-[10px] font-black text-slate-400 uppercase tracking-wider shrink-0">
+                  DEMO ACCESS
+                </span>
+                <div className="border-t border-slate-200 w-full" />
+              </div>
+
+              <div className="space-y-1 text-center">
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Try the demo without creating an account.
+                </p>
+              </div>
+
+              {/* Demo Profile Cards */}
+              <div className="space-y-2">
+                
+                {/* Dr. Raha */}
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin(loginAsDrRaha, 'Dr. Raha')}
+                  disabled={isLoading || !!successMessage}
+                  className="w-full p-3 bg-slate-50 hover:bg-teal-50/80 border border-slate-200 hover:border-teal-300 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-teal-700 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                      DR
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-xs text-slate-900 group-hover:text-teal-900">
+                          Continue as Dr. Raha
+                        </span>
+                        <span className="text-[9px] bg-teal-100 text-teal-800 font-black px-1.5 py-0.2 rounded">
+                          DEMO
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        Neurologist • Demo Stroke Care Hospital
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-teal-700 group-hover:translate-x-1 transition-all shrink-0" />
+                </button>
+
+                {/* Dr. Vijay */}
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin(loginAsDrVijay, 'Dr. Vijay')}
+                  disabled={isLoading || !!successMessage}
+                  className="w-full p-3 bg-slate-50 hover:bg-cyan-50/80 border border-slate-200 hover:border-cyan-300 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-cyan-700 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                      DV
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-xs text-slate-900 group-hover:text-cyan-900">
+                          Continue as Dr. Vijay
+                        </span>
+                        <span className="text-[9px] bg-cyan-100 text-cyan-800 font-black px-1.5 py-0.2 rounded">
+                          DEMO
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        Emergency Medicine Specialist • Demo Neuro Emergency Hospital
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-cyan-700 group-hover:translate-x-1 transition-all shrink-0" />
+                </button>
+
+                {/* Hospital Staff Demo */}
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin(loginAsDemoHospitalStaff, 'Hospital Team', '/hospital/dashboard')}
+                  disabled={isLoading || !!successMessage}
+                  className="w-full py-2 px-3 bg-purple-50 hover:bg-purple-100/80 border border-purple-200 rounded-xl text-xs font-bold text-purple-900 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Building2 className="w-3.5 h-3.5 text-purple-700" />
+                  <span>Continue as Receiving Hospital Staff</span>
+                </button>
+              </div>
+
+              <div className="text-center pt-1">
+                <span className="text-[10px] text-slate-400 block font-medium">
+                  AI-GENERATED DEMO PROFILE • Fictional account for demonstration only.
+                </span>
+              </div>
+            </div>
+
           </div>
 
-          {/* Medical Safety Footer */}
-          <div className="pt-4 border-t border-slate-100 text-center">
-            <p className="text-[10px] text-slate-400 leading-relaxed">
-              <strong>Clinical Safety Notice:</strong> StrokeShield AI provides clinical decision support and triage assistance. It does not replace diagnostic neuroimaging (CT/MRI) or certified clinical diagnosis.
+          {/* TRUST MESSAGE & MEDICAL DISCLAIMER (Sections 12 & 13) */}
+          <div className="pt-4 border-t border-slate-100 space-y-2 text-center text-slate-400 text-[10px] leading-relaxed">
+            <p>
+              Your patient information should be handled securely and only used for authorized clinical workflows.
+            </p>
+            <p className="text-[9.5px] text-slate-400">
+              StrokeShield AI provides AI-assisted screening support and does not replace professional medical diagnosis or emergency medical care.
             </p>
           </div>
+
         </div>
 
       </div>
+
     </div>
   );
 };
