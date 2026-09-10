@@ -25,12 +25,13 @@ import { HospitalDashboardPage } from './pages/hospital/HospitalDashboardPage';
 // Protected App Layout
 const ProtectedLayout: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
         <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-3 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-10 h-10 border-3 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-xs font-semibold text-slate-400">Verifying Clinical Provider Session...</p>
         </div>
       </div>
@@ -46,15 +47,21 @@ const ProtectedLayout: React.FC = () => {
       {/* Top Medical Safety Banner */}
       <MedicalDisclaimer />
 
-      {/* Main Top Header */}
-      <Navbar />
+      {/* Main Top Header with Mobile Hamburger */}
+      <Navbar 
+        onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+        isMobileMenuOpen={isMobileMenuOpen}
+      />
 
       <div className="flex-1 flex">
-        {/* Left Sidebar */}
-        <Sidebar />
+        {/* Left Sidebar (Desktop + Mobile Drawer) */}
+        <Sidebar 
+          isMobileOpen={isMobileMenuOpen} 
+          onCloseMobile={() => setIsMobileMenuOpen(false)} 
+        />
 
         {/* Main Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-x-hidden">
+        <main className="flex-1 p-3 sm:p-5 lg:p-7 max-w-7xl mx-auto w-full overflow-x-hidden">
           <Outlet />
         </main>
       </div>

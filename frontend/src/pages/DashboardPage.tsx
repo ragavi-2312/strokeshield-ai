@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { DashboardOverview, EmergencySummary, Patient, Hospital } from '../types';
 import { RiskBadge } from '../components/common/RiskBadge';
 import { MedicalDisclaimer } from '../components/common/MedicalDisclaimer';
@@ -8,7 +10,6 @@ import { ReferralWorkflowModal } from '../components/referral/ReferralWorkflowMo
 import { AddPatientModal } from '../components/patient/AddPatientModal';
 import { EmergencyMap } from '../components/map/EmergencyMap';
 import { DEFAULT_DOCTOR_LOCATION } from '../utils/geolocation';
-import { Link, useNavigate } from 'react-router-dom';
 import { 
   Users, 
   Activity, 
@@ -23,15 +24,23 @@ import {
   MapPin,
   Camera,
   Building2,
-  Navigation
+  Navigation,
+  Search,
+  CheckCircle2,
+  AlertTriangle,
+  Stethoscope,
+  SendHorizontal
 } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { doctor, role } = useAuth();
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [riskFilter, setRiskFilter] = useState<'ALL' | 'HIGH' | 'MODERATE' | 'LOW'>('ALL');
 
   // Modals state
   const [selectedSummary, setSelectedSummary] = useState<EmergencySummary | null>(null);
@@ -45,6 +54,7 @@ export const DashboardPage: React.FC = () => {
 
   const fetchDashboardData = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const [overview, hospitalsList] = await Promise.all([
         api.get<DashboardOverview>('/dashboard/statistics'),
@@ -53,7 +63,7 @@ export const DashboardPage: React.FC = () => {
       setData(overview);
       setHospitals(hospitalsList);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch dashboard statistics.');
+      setError(err.message || 'Unable to connect to clinical backend service.');
     } finally {
       setIsLoading(false);
     }
@@ -77,119 +87,219 @@ export const DashboardPage: React.FC = () => {
     setReferralModalData({ patientId, patientName, assessmentId });
   };
 
+  // Doctor greeting time calculation
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const doctorName = doctor?.name || 'Dr. Raha';
+  const clinicHospital = doctor?.hospital || 'Demo Stroke Care Hospital';
+
+  // Filtered recent assessments
+  const filteredAssessments = data?.recent_assessments.filter((item) => {
+    const matchesQuery = 
+      item.patient_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.patient_id_str.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRisk = riskFilter === 'ALL' || item.risk_level.toUpperCase() === riskFilter;
+    return matchesQuery && matchesRisk;
+  }) || [];
+
   return (
     <div className="space-y-6">
-      {/* Top Clinical Disclaimer Card */}
-      <MedicalDisclaimer variant="card" />
+      
+      {/* 1. TOP HEADER & MAIN CTAs (Section 5) */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] bg-teal-50 text-teal-800 border border-teal-200/80 font-bold px-2 py-0.5 rounded-full">
+              {clinicHospital} • Chennai
+            </span>
+            <span className="text-[11px] bg-amber-50 text-amber-900 border border-amber-200 font-bold px-2 py-0.5 rounded-full hidden sm:inline">
+              🟡 DEMO MODE
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            {getGreeting()}, {doctorName}
+          </h1>
+          <p className="text-xs text-slate-500 font-medium">
+            AI-Assisted Stroke Screening Dashboard • Multi-Modal Triage & Rapid Dispatch
+          </p>
+        </div>
 
-      {/* Metric Cards Grid */}
+        {/* Action CTAs */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link
+            to="/assessment/new"
+            className="px-5 py-3 bg-teal-700 hover:bg-teal-800 text-white rounded-2xl text-xs font-black shadow-md shadow-teal-700/20 flex items-center gap-2 transition-all hover:scale-[1.02] cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ New Patient Assessment</span>
+          </Link>
+          
+          <Link
+            to="/patients"
+            className="px-4 py-3 bg-slate-100 hover:bg-slate-200/80 text-slate-800 rounded-2xl text-xs font-bold transition-colors"
+          >
+            View Patients
+          </Link>
+
+          <Link
+            to="/referrals"
+            className="px-4 py-3 bg-slate-100 hover:bg-slate-200/80 text-slate-800 rounded-2xl text-xs font-bold transition-colors flex items-center gap-1.5"
+          >
+            <SendHorizontal className="w-3.5 h-3.5 text-slate-600" />
+            <span>View Referrals</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* 2. 30-SECOND HACKATHON EXPLAINER BOX (Section 32) */}
+      <div className="bg-gradient-to-r from-teal-900 via-slate-900 to-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-sm border border-teal-800/40 relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1 max-w-3xl">
+            <div className="flex items-center gap-2 text-teal-300 text-xs font-bold uppercase tracking-wider">
+              <Sparkles className="w-4 h-4 text-teal-300" />
+              <span>What is StrokeShield AI?</span>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
+              StrokeShield AI helps doctors perform AI-assisted stroke screening using patient symptoms, vitals, facial/arm/speech screening, and emergency referral support with live road GPS navigation.
+            </p>
+          </div>
+
+          <Link
+            to="/befast"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-500 text-white text-xs font-black rounded-xl shadow-xs shrink-0 transition-all hover:scale-105"
+          >
+            <Camera className="w-4 h-4" />
+            <span>Try BE-FAST Camera Suite</span>
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+
+      {/* 3. 4 KEY SUMMARY KPI CARDS (Section 5) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Patients */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex items-center justify-between hover:border-slate-300 transition-colors">
+        
+        {/* Patients Today */}
+        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between hover:border-slate-300 transition-all">
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Patients</span>
-            <div className="text-2xl font-extrabold text-slate-900">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Patients Today</span>
+            <div className="text-3xl font-black text-slate-900">
               {isLoading ? '...' : data?.stats.total_patients || 0}
             </div>
-            <span className="text-[11px] text-emerald-600 font-medium">Registered in clinic</span>
+            <span className="text-[11px] text-teal-700 font-semibold flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> Registered in clinic
+            </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center">
             <Users className="w-6 h-6" />
           </div>
         </div>
 
-        {/* Assessments Today */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex items-center justify-between hover:border-slate-300 transition-colors">
+        {/* Active Assessments */}
+        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between hover:border-slate-300 transition-all">
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Assessments Today</span>
-            <div className="text-2xl font-extrabold text-slate-900">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Assessments</span>
+            <div className="text-3xl font-black text-slate-900">
               {isLoading ? '...' : data?.stats.assessments_today || 0}
             </div>
-            <span className="text-[11px] text-brand-600 font-medium">BE-FAST & Vitals Triage</span>
+            <span className="text-[11px] text-teal-700 font-semibold flex items-center gap-1">
+              <Activity className="w-3 h-3" /> BE-FAST & Vitals Triage
+            </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-700 flex items-center justify-center">
             <Activity className="w-6 h-6" />
           </div>
         </div>
 
-        {/* High Risk Cases */}
-        <div className="bg-white rounded-3xl p-5 border border-red-200/80 shadow-sm flex items-center justify-between bg-red-50/20 hover:border-red-300 transition-colors">
+        {/* High Priority Cases */}
+        <div className="bg-white rounded-3xl p-5 border border-red-200/80 shadow-xs flex items-center justify-between bg-red-50/20 hover:border-red-300 transition-all">
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-red-700 uppercase tracking-wider">High Risk Patients</span>
-            <div className="text-2xl font-extrabold text-red-700">
+            <span className="text-[11px] font-bold text-red-600 uppercase tracking-wider">High Priority</span>
+            <div className="text-3xl font-black text-red-700">
               {isLoading ? '...' : data?.stats.high_risk_patients || 0}
             </div>
-            <span className="text-[11px] text-red-600 font-medium">Urgent evaluation alert</span>
+            <span className="text-[11px] text-red-600 font-semibold flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> Urgent evaluation alert
+            </span>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center">
             <AlertOctagon className="w-6 h-6" />
           </div>
         </div>
 
-        {/* Active Referrals */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex items-center justify-between hover:border-slate-300 transition-colors">
+        {/* Pending Referrals */}
+        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between hover:border-slate-300 transition-all">
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Hospital Referrals</span>
-            <div className="text-2xl font-extrabold text-slate-900">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pending Referrals</span>
+            <div className="text-3xl font-black text-slate-900">
               {isLoading ? '...' : data?.stats.active_referrals || 0}
             </div>
-            <span className="text-[11px] text-amber-600 font-medium">In Transit / Preparing</span>
+            <span className="text-[11px] text-amber-700 font-semibold flex items-center gap-1">
+              <Ambulance className="w-3 h-3" /> Active emergency transit
+            </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center">
             <Ambulance className="w-6 h-6" />
           </div>
         </div>
       </div>
 
-      {/* Emergency Alerts Banner Section */}
+      {/* 4. ACTIVE EMERGENCY ALERT BANNER (If high risk cases exist) */}
       {data && data.emergency_alerts.length > 0 && (
-        <div className="bg-gradient-to-r from-red-50 via-rose-50 to-red-100/60 rounded-3xl border-2 border-red-300 p-6 shadow-sm space-y-4">
+        <div className="bg-gradient-to-r from-red-50 via-rose-50 to-red-100/70 rounded-3xl border border-red-300 p-5 sm:p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-sm">
-                <AlertOctagon className="w-5 h-5 animate-pulse" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-600 text-white flex items-center justify-center shadow-xs">
+                <AlertOctagon className="w-6 h-6 animate-pulse" />
               </div>
               <div>
-                <h2 className="text-sm font-black text-red-950 uppercase tracking-wide">
-                  Active Emergency Stroke Alerts ({data.emergency_alerts.length})
+                <h2 className="text-sm font-black text-red-950 uppercase tracking-wider flex items-center gap-2">
+                  <span>Emergency Stroke Alerts</span>
+                  <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.2 rounded-full">
+                    {data.emergency_alerts.length} Active
+                  </span>
                 </h2>
                 <p className="text-xs text-red-800">
-                  Patients with acute BE-FAST focal signs requiring immediate speciality stroke center transfer.
+                  Acute neurological focal signs detected within therapeutic time window.
                 </p>
               </div>
             </div>
+
             <Link
               to="/emergency"
               className="text-xs text-red-800 hover:text-red-950 font-extrabold flex items-center gap-1"
             >
-              <span>View All Alerts</span>
+              <span>View All</span>
               <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
 
-          {/* Emergency Alert Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
             {data.emergency_alerts.slice(0, 2).map((alert) => (
               <div
                 key={alert.assessment_id}
-                className="bg-white rounded-2xl p-4 border border-red-200 shadow-sm flex flex-col justify-between space-y-3"
+                className="bg-white rounded-2xl p-4 border border-red-200/90 shadow-xs flex flex-col justify-between space-y-3"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <strong className="text-sm text-slate-900">{alert.patient_name}</strong>
+                      <strong className="text-sm font-black text-slate-900">{alert.patient_name}</strong>
                       <span className="font-mono text-xs text-slate-500 font-semibold">{alert.patient_id_str}</span>
                     </div>
                     <RiskBadge level={alert.risk_level} score={alert.risk_score} showScore size="sm" />
                   </div>
 
-                  <p className="text-xs text-red-700 font-medium mt-1">
-                    Urgent evaluation recommended • {alert.symptom_duration_text}
+                  <p className="text-xs text-red-700 font-semibold mt-1">
+                    {alert.symptom_duration_text}
                   </p>
 
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {alert.contributing_factors.map((factor, i) => (
-                      <span key={i} className="text-[10px] bg-red-50 text-red-800 px-2 py-0.5 rounded border border-red-200">
+                      <span key={i} className="text-[10px] bg-red-50 text-red-800 px-2 py-0.5 rounded-md border border-red-200">
                         {factor}
                       </span>
                     ))}
@@ -198,8 +308,9 @@ export const DashboardPage: React.FC = () => {
 
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">
                   <button
+                    type="button"
                     onClick={() => handleOpenEmergencySummary(alert.assessment_id)}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg flex items-center gap-1 transition-colors"
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <FileText className="w-3.5 h-3.5" />
                     <span>Summary</span>
@@ -208,18 +319,19 @@ export const DashboardPage: React.FC = () => {
                   {alert.has_referral ? (
                     <Link
                       to="/referrals"
-                      className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold rounded-lg flex items-center gap-1"
+                      className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold rounded-xl flex items-center gap-1"
                     >
                       <Ambulance className="w-3.5 h-3.5" />
-                      <span>{alert.referral_status || 'Referred'}</span>
+                      <span>{alert.referral_status || 'In Transit'}</span>
                     </Link>
                   ) : (
                     <button
+                      type="button"
                       onClick={() => handleOpenReferral(alert.patient_id, alert.patient_name, alert.assessment_id)}
-                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg flex items-center gap-1 shadow-sm shadow-red-500/20"
+                      className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-black rounded-xl flex items-center gap-1 shadow-xs cursor-pointer"
                     >
                       <Ambulance className="w-3.5 h-3.5" />
-                      <span>Start Referral</span>
+                      <span>Dispatch Referral</span>
                     </button>
                   )}
                 </div>
@@ -229,51 +341,92 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Main Content: Recent Assessments & Map Widget */}
+      {/* 5. MAIN CLINICAL SECTION: RECENT ASSESSMENTS & NEARBY STROKE HOSPITALS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left 7 Cols: Recent Patient Assessments */}
-        <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+        
+        {/* Left 7 Columns: Filterable Recent Assessments */}
+        <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
+          
+          {/* Header & Filter Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Recent Patient Assessments</h2>
+              <h2 className="text-base font-black text-slate-900">Recent Patient Assessments</h2>
               <p className="text-xs text-slate-500">Live clinical triage feed across all registered patients</p>
             </div>
-            <Link
-              to="/patients"
-              className="text-xs text-brand-600 hover:text-brand-800 font-semibold flex items-center gap-1 self-start sm:self-auto"
-            >
-              <span>View All Patients</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            
+            <div className="flex items-center gap-2">
+              <Link
+                to="/patients"
+                className="text-xs text-teal-700 hover:text-teal-800 font-bold flex items-center gap-1"
+              >
+                <span>All Patients</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
 
-          {/* Table */}
+          {/* Search & Urgency Filter Chips */}
+          <div className="flex flex-col sm:flex-row items-center gap-2.5">
+            <div className="relative flex-1 w-full">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search patient name or ID (e.g. P-1001)..."
+                className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-colors"
+              />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            </div>
+
+            {/* Filter Chips */}
+            <div className="flex items-center gap-1 w-full sm:w-auto">
+              {(['ALL', 'HIGH', 'MODERATE', 'LOW'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setRiskFilter(filter)}
+                  className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                    riskFilter === filter
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Table (Desktop) / Cards (Mobile) */}
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200">
-                  <th className="py-3 px-3">Patient ID</th>
-                  <th className="py-3 px-3">Patient Name</th>
-                  <th className="py-3 px-3">Assessment Date</th>
-                  <th className="py-3 px-3">Risk Level</th>
-                  <th className="py-3 px-3 text-right">Actions</th>
+                <tr className="bg-slate-50/80 text-slate-400 uppercase tracking-wider font-extrabold border-b border-slate-200">
+                  <th className="py-2.5 px-3">Patient Code</th>
+                  <th className="py-2.5 px-3">Patient Name</th>
+                  <th className="py-2.5 px-3">Encounter Time</th>
+                  <th className="py-2.5 px-3">AI Urgency</th>
+                  <th className="py-2.5 px-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {isLoading ? (
                   <tr>
                     <td colSpan={5} className="py-8 text-center text-slate-400">
-                      Loading recent assessments...
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                        <span>Loading clinical assessments...</span>
+                      </div>
                     </td>
                   </tr>
-                ) : !data || data.recent_assessments.length === 0 ? (
+                ) : filteredAssessments.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-8 text-center text-slate-400">
-                      No assessments recorded yet. Click "New Assessment" to begin.
+                      <p className="text-xs font-semibold">No assessments match your filter.</p>
                     </td>
                   </tr>
                 ) : (
-                  data.recent_assessments.map((item) => {
+                  filteredAssessments.map((item) => {
                     const date = new Date(item.assessment_date);
                     const formattedDate = date.toLocaleDateString(undefined, {
                       month: 'short',
@@ -283,26 +436,27 @@ export const DashboardPage: React.FC = () => {
                     });
 
                     return (
-                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3 px-3 font-mono font-bold text-brand-700">{item.patient_id_str}</td>
-                        <td className="py-3 px-3 font-semibold text-slate-900">{item.patient_name}</td>
+                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group">
+                        <td className="py-3 px-3 font-mono font-bold text-teal-800">{item.patient_id_str}</td>
+                        <td className="py-3 px-3 font-bold text-slate-900">{item.patient_name}</td>
                         <td className="py-3 px-3 text-slate-500">{formattedDate}</td>
                         <td className="py-3 px-3">
                           <RiskBadge level={item.risk_level} score={item.risk_score} showScore size="sm" />
                         </td>
-                        <td className="py-3 px-3 text-right">
+                        <td className="py-3 px-3 text-right space-x-2">
+                          <Link
+                            to={`/assessment/result/${item.id}`}
+                            className="text-xs font-bold text-teal-700 hover:text-teal-800"
+                          >
+                            View Result
+                          </Link>
                           <button
+                            type="button"
                             onClick={() => handleOpenEmergencySummary(item.id)}
-                            className="text-xs text-brand-600 hover:text-brand-800 font-semibold mr-2"
+                            className="text-xs font-semibold text-slate-500 hover:text-slate-800"
                           >
                             Summary
                           </button>
-                          <Link
-                            to={`/reports?assessment_id=${item.id}`}
-                            className="text-xs text-slate-600 hover:text-slate-900 font-semibold"
-                          >
-                            Report
-                          </Link>
                         </td>
                       </tr>
                     );
@@ -313,17 +467,21 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right 5 Cols: Emergency Map & Quick Navigation Widget */}
+        {/* Right 5 Columns: Nearby Stroke Centers Directory & Map */}
         <div className="lg:col-span-5 space-y-6">
-          {/* Map Widget */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-3">
+          
+          {/* Emergency Map Card */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                <span>Nearby Stroke Centers Map</span>
+                <MapPin className="w-3.5 h-3.5 text-teal-600" />
+                <span>Nearby Stroke Centers (Chennai)</span>
               </h3>
-              <Link to="/hospitals" className="text-xs text-brand-600 hover:text-brand-800 font-bold flex items-center gap-1">
-                <span>Directory</span>
+              <Link 
+                to="/hospitals" 
+                className="text-xs text-teal-700 hover:text-teal-800 font-bold flex items-center gap-1"
+              >
+                <span>All 5 Centers</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -335,34 +493,53 @@ export const DashboardPage: React.FC = () => {
               showRoute={true}
               selectedHospitalId={hospitals[0]?.id}
             />
+
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span>Origin: Clinic GPS (Chennai)</span>
+              <span className="font-bold text-teal-700">5 Centers 24/7 CT Ready</span>
+            </div>
           </div>
 
-          {/* Quick Actions Card */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-3">
+          {/* Camera Screening Suite Quick Launcher */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-brand-600" />
-              <span>Doctor Quick Clinical Suite</span>
+              <Camera className="w-3.5 h-3.5 text-teal-600" />
+              <span>AI Screening Suite</span>
             </h3>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               <Link
                 to="/befast"
-                className="p-3 rounded-2xl bg-brand-50 hover:bg-brand-100 text-brand-900 border border-brand-200 font-bold text-xs flex flex-col justify-between space-y-2 transition-all"
+                className="p-3.5 rounded-2xl bg-teal-50 hover:bg-teal-100/80 text-teal-900 border border-teal-200/80 font-bold text-xs flex flex-col justify-between space-y-2 transition-all group cursor-pointer"
               >
-                <Camera className="w-5 h-5 text-brand-600" />
-                <span>BE-FAST Camera Suite</span>
+                <div className="flex items-center justify-between">
+                  <Camera className="w-5 h-5 text-teal-700 group-hover:scale-110 transition-transform" />
+                  <span className="text-[9px] bg-teal-700 text-white font-black px-1.5 py-0.2 rounded">VISION</span>
+                </div>
+                <div>
+                  <span className="block font-black">BE-FAST Camera</span>
+                  <span className="text-[10px] text-teal-700 font-medium">Face, Arm & Speech</span>
+                </div>
               </Link>
 
               <Link
                 to="/assessment/new"
-                className="p-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex flex-col justify-between space-y-2 transition-all"
+                className="p-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex flex-col justify-between space-y-2 transition-all group cursor-pointer"
               >
-                <Activity className="w-5 h-5 text-white" />
-                <span>New Stroke Assessment</span>
+                <div className="flex items-center justify-between">
+                  <Activity className="w-5 h-5 text-teal-300 group-hover:scale-110 transition-transform" />
+                  <span className="text-[9px] bg-teal-400 text-slate-950 font-black px-1.5 py-0.2 rounded">+ NEW</span>
+                </div>
+                <div>
+                  <span className="block font-black">New Triage</span>
+                  <span className="text-[10px] text-slate-300 font-medium">Full 5-Step Wizard</span>
+                </div>
               </Link>
             </div>
           </div>
+
         </div>
+
       </div>
 
       {/* Emergency Summary Modal */}
@@ -404,6 +581,7 @@ export const DashboardPage: React.FC = () => {
           navigate(`/patients/${p.id}`);
         }}
       />
+
     </div>
   );
 };

@@ -21,9 +21,11 @@ import {
   AlertOctagon, 
   CheckCircle2, 
   MapPin, 
-  Shield, 
   Building2,
-  Stethoscope
+  Stethoscope,
+  ChevronRight,
+  ShieldCheck,
+  TrendingUp
 } from 'lucide-react';
 
 export const PatientDetailPage: React.FC = () => {
@@ -58,7 +60,6 @@ export const PatientDetailPage: React.FC = () => {
 
       setPatient(pData);
       setAssessments(aData);
-      // filter referrals for this patient
       setReferrals(rData.filter((r) => r.patient_id === Number(id)));
       setTimeline(tData);
       setVitalsHistory(vData);
@@ -86,18 +87,18 @@ export const PatientDetailPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="p-12 text-center text-slate-400">
-        <div className="w-8 h-8 border-3 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-        <span>Loading patient longitudinal medical record...</span>
+        <div className="w-8 h-8 border-3 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+        <span className="text-xs font-bold">Loading longitudinal patient medical record...</span>
       </div>
     );
   }
 
   if (!patient) {
     return (
-      <div className="bg-white rounded-2xl p-8 text-center text-slate-500 space-y-3">
+      <div className="bg-white rounded-3xl p-8 text-center text-slate-500 space-y-3">
         <p className="font-bold text-slate-800">Patient profile not found.</p>
-        <Link to="/patients" className="text-xs text-brand-600 font-semibold underline">
-          Return to Patients List
+        <Link to="/patients" className="text-xs text-teal-700 font-bold underline">
+          Return to Patient Registry
         </Link>
       </div>
     );
@@ -108,28 +109,29 @@ export const PatientDetailPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Back Button */}
+      
+      {/* Back Link */}
       <Link
         to="/patients"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors"
       >
         <ArrowLeft className="w-3.5 h-3.5" />
         <span>Back to Patient Registry</span>
       </Link>
 
       {/* Top Patient Header Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-start sm:items-center gap-4">
-          {/* Avatar Placeholder */}
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-700 to-teal-500 flex items-center justify-center text-white text-xl font-extrabold shadow-md shrink-0">
+          {/* Patient Avatar Badge */}
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-teal-800 to-cyan-600 flex items-center justify-center text-white text-xl font-black shadow-sm shrink-0">
             {patient.name.charAt(0)}
           </div>
 
-          {/* Details */}
+          {/* Patient Demographics */}
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-xl font-extrabold text-slate-900">{patient.name}</h1>
-              <span className="font-mono bg-brand-50 text-brand-700 border border-brand-200 text-xs px-2 py-0.5 rounded-md font-bold">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900">{patient.name}</h1>
+              <span className="font-mono bg-teal-50 text-teal-800 border border-teal-200 text-xs px-2 py-0.5 rounded-md font-bold">
                 {patient.patient_id}
               </span>
               {latestAssessment && (
@@ -137,9 +139,9 @@ export const PatientDetailPage: React.FC = () => {
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-0.5">
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-0.5 font-medium">
               <span>
-                <strong>Age/Gender:</strong> {patient.age} yrs • {patient.gender}
+                <strong>Demographics:</strong> {patient.age} yrs • {patient.gender}
               </span>
               <span>
                 <strong>DOB:</strong> {patient.dob}
@@ -150,19 +152,19 @@ export const PatientDetailPage: React.FC = () => {
             </div>
 
             <div className="text-xs text-slate-500 pt-0.5">
-              <span className="text-red-700 font-semibold">Emergency Contact:</span> {patient.emergency_contact_name} ({patient.emergency_contact_phone})
+              <span className="text-red-700 font-bold">Emergency Contact:</span> {patient.emergency_contact_name} ({patient.emergency_contact_phone})
             </div>
           </div>
         </div>
 
-        {/* Quick Action Button */}
+        {/* Action CTAs */}
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <Link
             to={`/assessment/new?patient_id=${patient.id}`}
-            className="w-full sm:w-auto px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl shadow-md shadow-brand-600/20 flex items-center justify-center gap-2 transition-all"
+            className="w-full sm:w-auto px-5 py-3 bg-teal-700 hover:bg-teal-800 text-white text-xs font-black rounded-2xl shadow-md shadow-teal-700/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] cursor-pointer"
           >
             <Activity className="w-4 h-4" />
-            <span>New Stroke Assessment</span>
+            <span>+ New Stroke Assessment</span>
           </Link>
         </div>
       </div>
@@ -170,7 +172,7 @@ export const PatientDetailPage: React.FC = () => {
       {/* Tabs Navigation */}
       <div className="flex gap-2 border-b border-slate-200 overflow-x-auto pb-1">
         {[
-          { key: 'overview', label: 'Medical History & Factors' },
+          { key: 'overview', label: 'Medical History & Risk Factors' },
           { key: 'assessments', label: `Assessments (${assessments.length})` },
           { key: 'vitals', label: 'Vitals & Urgency Trends' },
           { key: 'referrals', label: `Hospital Referrals (${referrals.length})` },
@@ -179,10 +181,11 @@ export const PatientDetailPage: React.FC = () => {
         ].map((tab) => (
           <button
             key={tab.key}
+            type="button"
             onClick={() => setActiveTab(tab.key as any)}
-            className={`px-4 py-2 rounded-t-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`px-4 py-2 rounded-t-2xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
               activeTab === tab.key
-                ? 'bg-white text-brand-600 border-t-2 border-brand-600 shadow-sm border-x border-slate-200 -mb-1'
+                ? 'bg-white text-teal-800 border-t-2 border-teal-700 shadow-xs border-x border-slate-200 -mb-1'
                 : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
@@ -191,49 +194,56 @@ export const PatientDetailPage: React.FC = () => {
         ))}
       </div>
 
-      {/* Tab Content */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-        {/* Tab 1: Overview */}
+      {/* Tab Content Cards */}
+      <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs">
+        
+        {/* Tab 1: Overview & Medical History */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-2">
-                <Heart className="w-4 h-4 text-brand-600" />
-                <span>Cardiovascular & Stroke Risk Factors</span>
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-teal-700" />
+                  <span>Cardiovascular & Stroke Risk Factors</span>
+                </h3>
+                <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">
+                  ORIGINAL DATA
+                </span>
+              </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className={`p-3 rounded-xl border text-xs ${medHist.hypertension ? 'bg-red-50/70 border-red-200 text-red-900' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                <div className={`p-3.5 rounded-2xl border text-xs ${medHist.hypertension ? 'bg-red-50/70 border-red-200 text-red-900' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
                   <strong>Hypertension:</strong> {medHist.hypertension ? 'Documented' : 'No'}
                 </div>
-                <div className={`p-3 rounded-xl border text-xs ${medHist.diabetes ? 'bg-red-50/70 border-red-200 text-red-900' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                <div className={`p-3.5 rounded-2xl border text-xs ${medHist.diabetes ? 'bg-red-50/70 border-red-200 text-red-900' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
                   <strong>Diabetes Mellitus:</strong> {medHist.diabetes ? 'Documented' : 'No'}
                 </div>
-                <div className={`p-3 rounded-xl border text-xs ${medHist.previous_stroke ? 'bg-red-100 border-red-300 text-red-950 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
-                  <strong>Prior Stroke / TIA:</strong> {medHist.previous_stroke ? 'YES (High Baseline)' : 'No'}
+                <div className={`p-3.5 rounded-2xl border text-xs ${medHist.previous_stroke ? 'bg-red-100 border-red-300 text-red-950 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                  <strong>Prior Stroke / TIA:</strong> {medHist.previous_stroke ? 'YES (Elevated Baseline)' : 'No'}
                 </div>
-                <div className={`p-3 rounded-xl border text-xs ${medHist.heart_disease ? 'bg-red-50/70 border-red-200 text-red-900' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                <div className={`p-3.5 rounded-2xl border text-xs ${medHist.heart_disease ? 'bg-red-50/70 border-red-200 text-red-900' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
                   <strong>Heart Disease / AFib:</strong> {medHist.heart_disease ? 'Documented' : 'No'}
                 </div>
-                <div className={`p-3 rounded-xl border text-xs ${medHist.high_cholesterol ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                <div className={`p-3.5 rounded-2xl border text-xs ${medHist.high_cholesterol ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
                   <strong>Hyperlipidemia:</strong> {medHist.high_cholesterol ? 'Documented' : 'No'}
                 </div>
-                <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-xs">
+                <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 text-xs">
                   <strong>Tobacco Status:</strong> {medHist.smoking || 'never'}
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-100">
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-xs font-semibold text-slate-500 block mb-1">Current Medications</span>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <span className="text-xs font-bold text-slate-500 block mb-1">Current Medications</span>
                 <p className="text-xs text-slate-900 font-medium">{medHist.current_medications || 'None recorded'}</p>
               </div>
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-xs font-semibold text-slate-500 block mb-1">Known Drug Allergies</span>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <span className="text-xs font-bold text-slate-500 block mb-1">Known Drug Allergies</span>
                 <p className="text-xs text-slate-900 font-medium">{medHist.known_allergies || 'NKDA'}</p>
               </div>
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-xs font-semibold text-slate-500 block mb-1">Prior Neurological History</span>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <span className="text-xs font-bold text-slate-500 block mb-1">Prior Neurological History</span>
                 <p className="text-xs text-slate-900 font-medium">{medHist.previous_neuro_conditions || 'None recorded'}</p>
               </div>
             </div>
@@ -244,12 +254,12 @@ export const PatientDetailPage: React.FC = () => {
         {activeTab === 'assessments' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-500">
-                Historical assessments are immutable and permanently recorded for longitudinal medical tracking.
+              <p className="text-xs text-slate-500 font-medium">
+                Historical clinical assessments are immutable and permanently recorded.
               </p>
               <Link
                 to={`/assessment/new?patient_id=${patient.id}`}
-                className="px-3 py-1.5 bg-brand-600 text-white text-xs font-bold rounded-lg flex items-center gap-1 shadow-sm"
+                className="px-3.5 py-1.5 bg-teal-700 text-white text-xs font-bold rounded-xl flex items-center gap-1 shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>New Assessment</span>
@@ -263,54 +273,48 @@ export const PatientDetailPage: React.FC = () => {
                 });
 
                 return (
-                  <div key={a.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition-colors space-y-3">
+                  <div key={a.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-colors space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-slate-900">Assessment #{a.id}</span>
+                        <span className="font-bold text-xs text-slate-900">Encounter #{a.id}</span>
                         <span className="text-xs text-slate-500">• {date}</span>
                       </div>
                       <RiskBadge level={a.risk_level} score={a.risk_score} showScore size="sm" />
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                      <div className="p-2 bg-white rounded border border-slate-200">
-                        <span className="text-slate-500 block text-[10px]">FAST Findings</span>
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200">
+                        <span className="text-slate-400 block text-[10px] font-bold">FAST Findings</span>
                         <strong className="text-slate-900">
                           F: {a.face_result} | A: {a.arm_result} | S: {a.speech_result}
                         </strong>
                       </div>
-                      <div className="p-2 bg-white rounded border border-slate-200">
-                        <span className="text-slate-500 block text-[10px]">Blood Pressure</span>
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200">
+                        <span className="text-slate-400 block text-[10px] font-bold">Blood Pressure</span>
                         <strong className="text-slate-900">{a.systolic_bp.toFixed(0)}/{a.diastolic_bp.toFixed(0)} mmHg</strong>
                       </div>
-                      <div className="p-2 bg-white rounded border border-slate-200">
-                        <span className="text-slate-500 block text-[10px]">Glucose & SpO2</span>
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200">
+                        <span className="text-slate-400 block text-[10px] font-bold">Glucose & SpO2</span>
                         <strong className="text-slate-900">{a.glucose.toFixed(0)} mg/dL • {a.spo2.toFixed(0)}%</strong>
                       </div>
-                      <div className="p-2 bg-white rounded border border-slate-200">
-                        <span className="text-slate-500 block text-[10px]">Onset Window</span>
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200">
+                        <span className="text-slate-400 block text-[10px] font-bold">Onset Window</span>
                         <strong className="text-slate-900">
                           {a.symptom_duration_minutes ? `${a.symptom_duration_minutes} mins` : a.symptom_onset || 'N/A'}
                         </strong>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                      <p className="text-[11px] text-slate-600 italic">
-                        {a.doctor_notes || 'Routine triage assessment.'}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-xs">
+                      <p className="text-[11px] text-slate-600 italic truncate max-w-md">
+                        {a.doctor_notes || 'Comprehensive stroke triage assessment.'}
                       </p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleOpenEmergencySummary(a.id)}
-                          className="text-xs text-brand-600 hover:text-brand-800 font-bold"
-                        >
-                          Emergency Summary
-                        </button>
+                      <div className="flex gap-2 shrink-0">
                         <Link
-                          to={`/reports?assessment_id=${a.id}`}
-                          className="text-xs text-slate-600 hover:text-slate-900 font-bold"
+                          to={`/assessment/result/${a.id}`}
+                          className="text-xs text-teal-700 hover:text-teal-800 font-bold"
                         >
-                          Full Report
+                          View Triage →
                         </Link>
                       </div>
                     </div>
@@ -328,17 +332,17 @@ export const PatientDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 4: Referrals */}
+        {/* Tab 4: Hospital Referrals */}
         {activeTab === 'referrals' && (
           <div className="space-y-4">
             {referrals.length === 0 ? (
               <div className="p-8 text-center text-slate-500">
                 <Building2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm font-medium">No hospital referrals initiated for this patient.</p>
+                <p className="text-sm font-bold">No hospital referrals initiated for this patient.</p>
               </div>
             ) : (
               referrals.map((r) => (
-                <div key={r.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+                <div key={r.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">{r.hospital?.name || 'Comprehensive Stroke Center'}</h4>
@@ -350,7 +354,7 @@ export const PatientDetailPage: React.FC = () => {
                   </div>
 
                   {r.dispatch_notes && (
-                    <p className="text-xs text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200">
+                    <p className="text-xs text-slate-700 bg-white p-2.5 rounded-xl border border-slate-200">
                       <strong>Dispatch Handover Notes:</strong> {r.dispatch_notes}
                     </p>
                   )}
@@ -360,29 +364,30 @@ export const PatientDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 5: Timeline */}
+        {/* Tab 5: Longitudinal Timeline */}
         {activeTab === 'timeline' && (
           <PatientTimeline items={timeline} />
         )}
 
-        {/* Tab 6: Notes */}
+        {/* Tab 6: Doctor Clinical Notes */}
         {activeTab === 'notes' && (
           <div className="space-y-4">
             <div className="space-y-3">
               {assessments.map((a) => (
-                <div key={a.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                <div key={a.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
                   <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span className="font-semibold text-slate-900">Assessment #{a.id} Clinical Entry</span>
+                    <span className="font-bold text-slate-900">Encounter #{a.id} Clinical Record</span>
                     <span>{new Date(a.assessment_time).toLocaleDateString()}</span>
                   </div>
-                  <p className="text-xs text-slate-800 leading-relaxed">
-                    {a.doctor_notes || 'No specific clinical narrative recorded for this assessment.'}
+                  <p className="text-xs text-slate-800 leading-relaxed font-medium">
+                    {a.doctor_notes || 'No specific narrative recorded.'}
                   </p>
                 </div>
               ))}
             </div>
           </div>
         )}
+
       </div>
 
       {/* Emergency Summary Modal */}

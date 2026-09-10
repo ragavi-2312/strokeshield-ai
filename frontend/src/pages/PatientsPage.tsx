@@ -11,10 +11,10 @@ import {
   Plus, 
   Activity, 
   ChevronRight, 
-  ArrowUpDown, 
-  UserCheck, 
-  FileText, 
-  Phone
+  Phone,
+  FileText,
+  Clock,
+  UserCheck
 } from 'lucide-react';
 
 export const PatientsPage: React.FC = () => {
@@ -53,29 +53,39 @@ export const PatientsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      
       {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs">
         <div>
-          <h1 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-            <Users className="w-5 h-5 text-brand-600" />
-            <span>Patient Registry & Longitudinal Records</span>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] bg-teal-50 text-teal-800 border border-teal-200/80 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+              Patient Registry
+            </span>
+            <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full">
+              {patients.length} Registered Patients
+            </span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <Users className="w-6 h-6 text-teal-700" />
+            <span>Clinical Patient Registry</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manage patient demographic records, cardiovascular baselines, and historical stroke assessments.
+            Search demographics, baseline risk factors, and longitudinal stroke assessments.
           </p>
         </div>
 
         <button
+          type="button"
           onClick={() => setIsAddPatientOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl shadow-md shadow-brand-600/20 transition-all hover:shadow"
+          className="inline-flex items-center gap-2 px-5 py-3 bg-teal-700 hover:bg-teal-800 text-white text-xs font-black rounded-2xl shadow-md shadow-teal-700/20 transition-all hover:scale-[1.02] cursor-pointer self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
-          <span>Register New Patient</span>
+          <span>+ Register New Patient</span>
         </button>
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-3">
+      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center gap-3">
         {/* Search Input */}
         <form onSubmit={handleSearchSubmit} className="flex-1 relative w-full">
           <input
@@ -83,12 +93,12 @@ export const PatientsPage: React.FC = () => {
             placeholder="Search patient name, ID (e.g. P-1001), or phone number..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-20 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+            className="w-full pl-9 pr-20 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-colors"
           />
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
           <button
             type="submit"
-            className="absolute right-1.5 top-1.5 px-3 py-1 bg-slate-900 text-white rounded-lg text-[11px] font-semibold hover:bg-slate-800 transition-colors"
+            className="absolute right-1.5 top-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition-colors cursor-pointer"
           >
             Search
           </button>
@@ -100,7 +110,7 @@ export const PatientsPage: React.FC = () => {
           <select
             value={riskFilter}
             onChange={(e) => setRiskFilter(e.target.value)}
-            className="px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 font-medium text-slate-700 w-full md:w-auto"
+            className="px-3 py-2.5 text-xs border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 font-bold text-slate-700 w-full md:w-auto"
           >
             <option value="">All Urgency Tiers</option>
             <option value="HIGH">High Urgency / Emergency</option>
@@ -111,11 +121,11 @@ export const PatientsPage: React.FC = () => {
       </div>
 
       {/* Patients Table Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200">
+              <tr className="bg-slate-50/80 text-slate-400 uppercase tracking-wider font-extrabold border-b border-slate-200">
                 <th className="py-3 px-4">Patient ID</th>
                 <th className="py-3 px-4">Full Name</th>
                 <th className="py-3 px-4">Demographics</th>
@@ -129,7 +139,7 @@ export const PatientsPage: React.FC = () => {
               {isLoading ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400">
-                    <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                    <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                     <span>Loading patient records...</span>
                   </td>
                 </tr>
@@ -137,24 +147,17 @@ export const PatientsPage: React.FC = () => {
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400">
                     <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                    <p className="font-semibold text-slate-600">No matching patients found.</p>
-                    <p className="text-[11px] text-slate-400 mt-1">Try adjusting your search criteria or register a new patient.</p>
+                    <p className="font-bold text-slate-700">No matching patients found.</p>
+                    <p className="text-[11px] text-slate-400 mt-1">Try adjusting your search query or click register new patient.</p>
                   </td>
                 </tr>
               ) : (
                 patients.map((p) => {
-                  const lastDate = p.last_assessment_date
-                    ? new Date(p.last_assessment_date).toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                      })
-                    : 'None';
-
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-bold text-brand-700">{p.patient_id}</td>
+                    <tr key={p.id} className="hover:bg-slate-50/80 transition-colors group">
+                      <td className="py-3.5 px-4 font-mono font-bold text-teal-800">{p.patient_id}</td>
                       <td className="py-3.5 px-4">
-                        <Link to={`/patients/${p.id}`} className="font-bold text-slate-900 hover:text-brand-600">
+                        <Link to={`/patients/${p.id}`} className="font-bold text-slate-900 hover:text-teal-700 block">
                           {p.name}
                         </Link>
                       </td>
@@ -175,20 +178,20 @@ export const PatientsPage: React.FC = () => {
                         )}
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-semibold text-[11px]">
+                        <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-bold text-[11px]">
                           {p.total_assessments} record{p.total_assessments !== 1 ? 's' : ''}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right space-x-2">
                         <Link
                           to={`/assessment/new?patient_id=${p.id}`}
-                          className="px-2.5 py-1 bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold rounded-lg transition-colors text-[11px]"
+                          className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 font-bold rounded-lg transition-colors text-[11px] inline-block"
                         >
-                          New FAST
+                          + FAST
                         </Link>
                         <Link
                           to={`/patients/${p.id}`}
-                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-colors text-[11px]"
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-colors text-[11px] inline-block"
                         >
                           Profile →
                         </Link>

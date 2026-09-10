@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { PatientSummary, Assessment } from '../types';
 import { 
@@ -7,7 +7,6 @@ import {
   Clock, 
   AlertTriangle, 
   CheckCircle2, 
-  HelpCircle, 
   Sparkles, 
   Camera, 
   Smile, 
@@ -15,7 +14,12 @@ import {
   ShieldCheck, 
   User, 
   ChevronRight,
-  Info
+  ChevronLeft,
+  Info,
+  HeartPulse,
+  Flame,
+  FileText,
+  AlertCircle
 } from 'lucide-react';
 import { FaceScreeningModal } from '../components/camera/FaceScreeningModal';
 import { ArmScreeningModal } from '../components/camera/ArmScreeningModal';
@@ -28,6 +32,7 @@ export const NewAssessmentPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const initialPatientId = searchParams.get('patient_id');
 
+  const [currentStep, setCurrentStep] = useState<number>(1);
   const [patients, setPatients] = useState<PatientSummary[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<number | ''>(
     initialPatientId ? parseInt(initialPatientId, 10) : ''
@@ -39,7 +44,6 @@ export const NewAssessmentPage: React.FC = () => {
   const [isSpeechModalOpen, setIsSpeechModalOpen] = useState(false);
 
   // Onset & Last Known Well
-  const [onsetCategory, setOnsetCategory] = useState<'exact' | 'approx' | 'unknown'>('exact');
   const [lastKnownWellTime, setLastKnownWellTime] = useState<string>('08:30');
   const [symptomDurationMinutes, setSymptomDurationMinutes] = useState<number>(45);
 
@@ -69,10 +73,7 @@ export const NewAssessmentPage: React.FC = () => {
 
   // Structured Doctor Notes
   const [clinicalObservation, setClinicalObservation] = useState<string>('');
-  const [additionalSymptoms, setAdditionalSymptoms] = useState<string>('');
   const [immediateAction, setImmediateAction] = useState<string>('');
-  const [followUp, setFollowUp] = useState<string>('');
-
   const [cameraMetrics, setCameraMetrics] = useState<Record<string, any>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -124,13 +125,13 @@ export const NewAssessmentPage: React.FC = () => {
       setBalanceResult('sudden_loss');
       setEyesResult('normal');
       setSystolicBp(188);
-      setDiastolicBp(110);
+      setDiastolicBp(108);
       setGlucose(195);
       setHeartRate(88);
       setSpo2(96);
       setTemperature(37.1);
       setClinicalObservation('Acute onset right facial droop and right arm pronator drift verified via camera screening.');
-      setImmediateAction('Activate Code Stroke. Emergency transfer to Metro Comprehensive Stroke Center.');
+      setImmediateAction('Activate Code Stroke. Emergency transfer to nearest Comprehensive Stroke Center.');
     } else if (type === 'moderate') {
       setLastKnownWellTime('04:00');
       setSymptomDurationMinutes(300);
@@ -146,12 +147,12 @@ export const NewAssessmentPage: React.FC = () => {
       setBalanceResult('sudden_loss');
       setEyesResult('normal');
       setSystolicBp(158);
-      setDiastolicBp(95);
+      setDiastolicBp(96);
       setGlucose(145);
       setHeartRate(78);
       setSpo2(97);
       setClinicalObservation('Dizziness and mild left arm paresthesia.');
-      setImmediateAction('Stabilize vitals and obtain outpatient MRI.');
+      setImmediateAction('Stabilize vitals and obtain outpatient neuroimaging.');
     } else {
       setLastKnownWellTime('10:00');
       setSymptomDurationMinutes(15);
@@ -171,8 +172,8 @@ export const NewAssessmentPage: React.FC = () => {
       setGlucose(95);
       setHeartRate(72);
       setSpo2(99);
-      setClinicalObservation('Routine wellness follow-up.');
-      setImmediateAction('Continue lifestyle modification.');
+      setClinicalObservation('Routine outpatient checkup.');
+      setImmediateAction('Continue standard preventive care.');
     }
   };
 
@@ -210,9 +211,7 @@ export const NewAssessmentPage: React.FC = () => {
         doctor_notes: clinicalObservation || 'Comprehensive stroke triage assessment.',
         structured_notes: {
           clinical_observation: clinicalObservation,
-          additional_symptoms: additionalSymptoms,
           immediate_action: immediateAction,
-          follow_up: followUp,
         },
         camera_assessment_data: cameraMetrics,
       };
@@ -226,385 +225,617 @@ export const NewAssessmentPage: React.FC = () => {
     }
   };
 
+  const selectedPatient = patients.find((p) => p.id === Number(selectedPatientId));
+
+  const steps = [
+    { num: 1, title: 'Patient Profile' },
+    { num: 2, title: 'BE-FAST Neurological' },
+    { num: 3, title: 'Time / Last Known Well' },
+    { num: 4, title: 'Vitals Entry' },
+    { num: 5, title: 'Review & AI Triage' },
+  ];
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-5xl mx-auto pb-16">
-      {/* Header & Demo Shortcut Pre-fillers */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto pb-16">
+      
+      {/* Top Header & Demo Shortcuts */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs">
         <div>
-          <h1 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-brand-600" />
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] bg-teal-50 text-teal-800 border border-teal-200/80 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+              Clinical Assessment
+            </span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <Activity className="w-6 h-6 text-teal-700" />
             <span>New Stroke Urgency Assessment</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Structured FAST & BE-FAST screening with optional camera landmark detection and hemodynamic vitals stratification.
+            Step-by-step patient triage, camera-assisted vision, and vital signs stratification.
           </p>
         </div>
 
-        {/* Demo Fast Fill Buttons */}
+        {/* Demo Preset Fillers */}
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] font-bold text-slate-400">Demo Fill:</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Demo Preset:</span>
           <button
             type="button"
             onClick={() => fillDemoCase('high')}
-            className="px-2.5 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 rounded-xl text-xs font-bold border border-red-200 transition-colors"
+            className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-800 rounded-xl text-xs font-bold border border-red-200 transition-colors cursor-pointer"
           >
-            🚨 Acute Stroke Case
+            🚨 Acute Stroke (High)
           </button>
           <button
             type="button"
             onClick={() => fillDemoCase('moderate')}
-            className="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-xl text-xs font-bold border border-amber-200 transition-colors"
+            className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold border border-amber-200 transition-colors cursor-pointer"
           >
-            ⚠️ Moderate Risk
+            ⚠️ Moderate
           </button>
           <button
             type="button"
             onClick={() => fillDemoCase('low')}
-            className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-xl text-xs font-bold border border-emerald-200 transition-colors"
+            className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold border border-emerald-200 transition-colors cursor-pointer"
           >
             ✓ Low Risk
           </button>
         </div>
       </div>
 
-      <MedicalDisclaimer variant="card" />
-
-      {/* Patient Selection Card */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
-        <label className="text-xs font-extrabold text-slate-900 flex items-center gap-2">
-          <User className="w-4 h-4 text-brand-600" />
-          <span>Select Target Patient Record:</span>
-        </label>
-        
-        <select
-          value={selectedPatientId}
-          onChange={(e) => setSelectedPatientId(Number(e.target.value))}
-          required
-          className="w-full px-4 py-3 text-sm font-bold border border-slate-300 rounded-2xl bg-white focus:ring-2 focus:ring-brand-500/20 text-slate-900"
-        >
-          <option value="">-- Choose Patient --</option>
-          {patients.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.patient_id} — {p.name} ({p.age} yrs • {p.gender})
-            </option>
+      {/* STEP PROGRESS BAR */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
+        <div className="flex items-center justify-between">
+          {steps.map((s, idx) => (
+            <React.Fragment key={s.num}>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(s.num)}
+                className={`flex items-center gap-2 text-xs font-bold transition-colors cursor-pointer ${
+                  currentStep === s.num
+                    ? 'text-teal-800'
+                    : currentStep > s.num
+                    ? 'text-slate-900'
+                    : 'text-slate-400'
+                }`}
+              >
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${
+                  currentStep === s.num
+                    ? 'bg-teal-700 text-white'
+                    : currentStep > s.num
+                    ? 'bg-teal-100 text-teal-800'
+                    : 'bg-slate-100 text-slate-400'
+                }`}>
+                  {s.num}
+                </div>
+                <span className="hidden md:inline">{s.title}</span>
+              </button>
+              {idx < steps.length - 1 && (
+                <div className={`flex-1 h-0.5 mx-2 ${currentStep > s.num ? 'bg-teal-500' : 'bg-slate-200'}`} />
+              )}
+            </React.Fragment>
           ))}
-        </select>
+        </div>
       </div>
 
-      {/* Section 1: BE-FAST Assessment Suite */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+      {/* STEP 1: PATIENT SELECTION */}
+      {currentStep === 1 && (
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6">
           <div>
-            <h2 className="text-base font-extrabold text-slate-900">
-              1. BE-FAST Acute Neurological Screening
-            </h2>
-            <p className="text-xs text-slate-500">
-              Use camera computer vision or enter direct manual clinical findings
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-black text-slate-900">Step 1: Select Patient Record</h2>
+              <span className="text-[10px] font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-600">SOURCE DATA</span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Choose an existing patient from the clinic registry.
             </p>
           </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-700 block">Select Patient</label>
+            <select
+              value={selectedPatientId}
+              onChange={(e) => setSelectedPatientId(Number(e.target.value))}
+              required
+              className="w-full px-4 py-3 text-xs sm:text-sm font-bold border border-slate-300 rounded-2xl bg-white focus:ring-2 focus:ring-teal-500/20 text-slate-900"
+            >
+              <option value="">-- Choose Patient --</option>
+              {patients.map((p) => (
+                <option key={p.id} value={p.id}>
+                  [{p.patient_id}] {p.name} — {p.age} yrs • {p.gender}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedPatient && (
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <strong className="text-slate-900 font-bold">{selectedPatient.name}</strong>
+                <span className="font-mono text-teal-800 font-black">{selectedPatient.patient_id}</span>
+              </div>
+              <p className="text-slate-600">
+                Age: <strong>{selectedPatient.age}</strong> • Gender: <strong>{selectedPatient.gender}</strong>
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setCurrentStep(2)}
+              className="px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <span>Next: BE-FAST Symptoms</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
+      )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* F — Face */}
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-brand-600 text-white font-bold text-xs flex items-center justify-center">F</span>
-                <span className="font-extrabold text-slate-900 text-xs">Facial Asymmetry / Droop</span>
+      {/* STEP 2: BE-FAST NEUROLOGICAL SCREENING */}
+      {currentStep === 2 && (
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-black text-slate-900">
+                Step 2: BE-FAST Neurological Screening
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Use camera vision or record attending physician observations.
+              </p>
+            </div>
+            <span className="text-[10px] font-mono bg-teal-50 text-teal-800 border border-teal-200 px-2 py-0.5 rounded">
+              AI SCREENING SUITE
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* F — Face */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-teal-700 text-white font-bold text-xs flex items-center justify-center">F</span>
+                  <span className="font-bold text-slate-900 text-xs">Facial Asymmetry / Droop</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsFaceModalOpen(true)}
+                  className="px-2.5 py-1 bg-teal-50 text-teal-800 hover:bg-teal-100 rounded-lg text-xs font-bold flex items-center gap-1 border border-teal-200 cursor-pointer"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Face Camera</span>
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsFaceModalOpen(true)}
-                className="px-2.5 py-1 bg-brand-50 text-brand-700 hover:bg-brand-100 rounded-lg text-xs font-bold flex items-center gap-1 border border-brand-200"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                <span>Camera Check</span>
-              </button>
+
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => { setFaceResult('normal'); setFaceDoctorConfirmation('normal'); }}
+                  className={`py-2 px-2 rounded-xl font-bold border transition-all cursor-pointer ${
+                    faceResult === 'normal' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200'
+                  }`}
+                >
+                  ✓ Normal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setFaceResult('possible_abnormality'); setFaceDoctorConfirmation('abnormal'); }}
+                  className={`py-2 px-2 rounded-xl font-bold border transition-all cursor-pointer ${
+                    faceResult === 'possible_abnormality' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-700 border-slate-200'
+                  }`}
+                >
+                  ⚠️ Droop
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setFaceResult('unable_to_assess'); setFaceDoctorConfirmation('unable_to_assess'); }}
+                  className={`py-2 px-2 rounded-xl font-bold border transition-all cursor-pointer ${
+                    faceResult === 'unable_to_assess' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-700 border-slate-200'
+                  }`}
+                >
+                  ❓ Unable
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => { setFaceResult('normal'); setFaceDoctorConfirmation('normal'); }}
-                className={`py-2 px-2 rounded-xl font-bold border transition-all ${
-                  faceResult === 'normal' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200'
-                }`}
-              >
-                ✓ Normal
-              </button>
-              <button
-                type="button"
-                onClick={() => { setFaceResult('possible_abnormality'); setFaceDoctorConfirmation('abnormal'); }}
-                className={`py-2 px-2 rounded-xl font-bold border transition-all ${
-                  faceResult === 'possible_abnormality' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-700 border-slate-200'
-                }`}
-              >
-                ⚠️ Droop
-              </button>
-              <button
-                type="button"
-                onClick={() => { setFaceResult('unable_to_assess'); setFaceDoctorConfirmation('unable_to_assess'); }}
-                className={`py-2 px-2 rounded-xl font-bold border transition-all ${
-                  faceResult === 'unable_to_assess' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-700 border-slate-200'
-                }`}
-              >
-                ❓ Unable
-              </button>
+            {/* A — Arms */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-amber-600 text-white font-bold text-xs flex items-center justify-center">A</span>
+                  <span className="font-bold text-slate-900 text-xs">Arm Drift / Weakness</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsArmModalOpen(true)}
+                  className="px-2.5 py-1 bg-amber-50 text-amber-800 hover:bg-amber-100 rounded-lg text-xs font-bold flex items-center gap-1 border border-amber-200 cursor-pointer"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>5s Drift Test</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => { setArmResult('normal'); setArmDoctorConfirmation('normal'); }}
+                  className={`py-2 px-2 rounded-xl font-bold border transition-all cursor-pointer ${
+                    armResult === 'normal' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200'
+                  }`}
+                >
+                  ✓ Normal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setArmResult('possible_weakness'); setArmDoctorConfirmation('weakness_suspected'); }}
+                  className={`py-2 px-2 rounded-xl font-bold border transition-all cursor-pointer ${
+                    armResult === 'possible_weakness' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-700 border-slate-200'
+                  }`}
+                >
+                  ⚠️ Weakness
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setArmResult('unable_to_assess'); setArmDoctorConfirmation('unable_to_assess'); }}
+                  className={`py-2 px-2 rounded-xl font-bold border transition-all cursor-pointer ${
+                    armResult === 'unable_to_assess' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-700 border-slate-200'
+                  }`}
+                >
+                  ❓ Unable
+                </button>
+              </div>
+            </div>
+
+            {/* S — Speech */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-rose-600 text-white font-bold text-xs flex items-center justify-center">S</span>
+                  <span className="font-bold text-slate-900 text-xs">Speech Slurring</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSpeechModalOpen(true)}
+                  className="px-2.5 py-1 bg-rose-50 text-rose-800 hover:bg-rose-100 rounded-lg text-xs font-bold flex items-center gap-1 border border-rose-200 cursor-pointer"
+                >
+                  <Mic className="w-3.5 h-3.5" />
+                  <span>Speech Test</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => { setSpeechResult('normal'); setSpeechDoctorConfirmation('normal'); }}
+                  className={`py-2 px-2 rounded-xl font-bold border transition-all cursor-pointer ${
+                    speechResult === 'normal' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200'
+                  }`}
+                >
+                  ✓ Normal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSpeechResult('possible_speech_difficulty'); setSpeechDoctorConfirmation('abnormal'); }}
+                  className={`py-2 px-2 rounded-xl font-bold border transition-all cursor-pointer ${
+                    speechResult === 'possible_speech_difficulty' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-700 border-slate-200'
+                  }`}
+                >
+                  ⚠️ Slurred
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSpeechResult('unable_to_assess'); setSpeechDoctorConfirmation('unable_to_assess'); }}
+                  className={`py-2 px-2 rounded-xl font-bold border transition-all cursor-pointer ${
+                    speechResult === 'unable_to_assess' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-700 border-slate-200'
+                  }`}
+                >
+                  ❓ Unable
+                </button>
+              </div>
+            </div>
+
+            {/* B & E — Balance & Eyes */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">BE</span>
+                <span className="font-bold text-slate-900 text-xs">Balance & Visual Signs</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label className="text-[10px] text-slate-500 font-bold block mb-1">Balance</label>
+                  <select
+                    value={balanceResult}
+                    onChange={(e) => setBalanceResult(e.target.value)}
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded-xl bg-white font-bold"
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="sudden_loss">Sudden Loss / Ataxia</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500 font-bold block mb-1">Eyes / Vision</label>
+                  <select
+                    value={eyesResult}
+                    onChange={(e) => setEyesResult(e.target.value)}
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded-xl bg-white font-bold"
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="diplopia">Gaze Deviation / Diplopia</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* A — Arms */}
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-amber-600 text-white font-bold text-xs flex items-center justify-center">A</span>
-                <span className="font-extrabold text-slate-900 text-xs">Arm Drift / Weakness</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsArmModalOpen(true)}
-                className="px-2.5 py-1 bg-amber-50 text-amber-800 hover:bg-amber-100 rounded-lg text-xs font-bold flex items-center gap-1 border border-amber-200"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                <span>5s Drift Test</span>
-              </button>
+          <div className="flex justify-between">
+            <button
+              type="button"
+              onClick={() => setCurrentStep(1)}
+              className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentStep(3)}
+              className="px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Next: Last Known Well</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 3: TIME / LAST KNOWN WELL */}
+      {currentStep === 3 && (
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-black text-slate-900">
+                Step 3: Symptom Timing & Last Known Well (LKW)
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Exact timing determines IV-thrombolysis (4.5h) and mechanical thrombectomy eligibility.
+              </p>
+            </div>
+            <span className="text-[10px] font-mono bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded">
+              GOLDEN HOUR
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+              <label className="text-xs font-bold text-slate-800 block">Time Last Normal / Symptom Onset</label>
+              <input
+                type="time"
+                value={lastKnownWellTime}
+                onChange={(e) => setLastKnownWellTime(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white"
+              />
+              <p className="text-[11px] text-slate-400">Timestamp when patient was last verified completely symptom-free.</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => { setArmResult('normal'); setArmDoctorConfirmation('normal'); }}
-                className={`py-2 px-2 rounded-xl font-bold border transition-all ${
-                  armResult === 'normal' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200'
-                }`}
-              >
-                ✓ Normal
-              </button>
-              <button
-                type="button"
-                onClick={() => { setArmResult('possible_weakness'); setArmDoctorConfirmation('weakness_suspected'); }}
-                className={`py-2 px-2 rounded-xl font-bold border transition-all ${
-                  armResult === 'possible_weakness' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-700 border-slate-200'
-                }`}
-              >
-                ⚠️ Weakness
-              </button>
-              <button
-                type="button"
-                onClick={() => { setArmResult('unable_to_assess'); setArmDoctorConfirmation('unable_to_assess'); }}
-                className={`py-2 px-2 rounded-xl font-bold border transition-all ${
-                  armResult === 'unable_to_assess' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-700 border-slate-200'
-                }`}
-              >
-                ❓ Unable
-              </button>
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+              <label className="text-xs font-bold text-slate-800 block">Elapsed Minutes Since Onset</label>
+              <input
+                type="number"
+                value={symptomDurationMinutes}
+                onChange={(e) => setSymptomDurationMinutes(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white"
+              />
+              <div className="flex items-center justify-between text-[11px] pt-1">
+                <span className="text-slate-500">Therapeutic Window:</span>
+                <span className={`font-black ${symptomDurationMinutes <= 270 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  {symptomDurationMinutes <= 270 ? '🟢 Within 4.5h Window' : '🟡 Extended Window (>4.5h)'}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* S — Speech */}
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-rose-600 text-white font-bold text-xs flex items-center justify-center">S</span>
-                <span className="font-extrabold text-slate-900 text-xs">Speech Slurring / Articulation</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsSpeechModalOpen(true)}
-                className="px-2.5 py-1 bg-rose-50 text-rose-800 hover:bg-rose-100 rounded-lg text-xs font-bold flex items-center gap-1 border border-rose-200"
-              >
-                <Mic className="w-3.5 h-3.5" />
-                <span>Speech Test</span>
-              </button>
-            </div>
+          <div className="flex justify-between">
+            <button
+              type="button"
+              onClick={() => setCurrentStep(2)}
+              className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentStep(4)}
+              className="px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Next: Vitals Entry</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => { setSpeechResult('normal'); setSpeechDoctorConfirmation('normal'); }}
-                className={`py-2 px-2 rounded-xl font-bold border transition-all ${
-                  speechResult === 'normal' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200'
-                }`}
-              >
-                ✓ Normal
-              </button>
-              <button
-                type="button"
-                onClick={() => { setSpeechResult('possible_speech_difficulty'); setSpeechDoctorConfirmation('abnormal'); }}
-                className={`py-2 px-2 rounded-xl font-bold border transition-all ${
-                  speechResult === 'possible_speech_difficulty' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-700 border-slate-200'
-                }`}
-              >
-                ⚠️ Slurred
-              </button>
-              <button
-                type="button"
-                onClick={() => { setSpeechResult('unable_to_assess'); setSpeechDoctorConfirmation('unable_to_assess'); }}
-                className={`py-2 px-2 rounded-xl font-bold border transition-all ${
-                  speechResult === 'unable_to_assess' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-700 border-slate-200'
-                }`}
-              >
-                ❓ Unable
-              </button>
+      {/* STEP 4: VITALS ENTRY (Section 8) */}
+      {currentStep === 4 && (
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-black text-slate-900">
+                Step 4: Hemodynamic Vital Signs
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Measured at clinic triage. Abnormal values are highlighted for clinical review.
+              </p>
             </div>
+            <span className="text-[10px] font-mono bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded">
+              DEVICE MEASUREMENT
+            </span>
           </div>
 
-          {/* T — Time / Last Known Well */}
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-lg bg-teal-600 text-white font-bold text-xs flex items-center justify-center">T</span>
-              <span className="font-extrabold text-slate-900 text-xs">Last Known Well Timing</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <label className="text-[10px] text-slate-500 font-bold block mb-1">Time Last Normal</label>
-                <input
-                  type="time"
-                  value={lastKnownWellTime}
-                  onChange={(e) => setLastKnownWellTime(e.target.value)}
-                  className="w-full px-2.5 py-1.5 border border-slate-300 rounded-xl font-bold text-slate-900"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-500 font-bold block mb-1">Elapsed Mins</label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+              <label className="font-bold text-slate-700 block mb-1">Systolic BP</label>
+              <div className="flex items-center gap-1">
                 <input
                   type="number"
-                  value={symptomDurationMinutes}
-                  onChange={(e) => setSymptomDurationMinutes(Number(e.target.value))}
-                  className="w-full px-2.5 py-1.5 border border-slate-300 rounded-xl font-bold text-slate-900"
+                  value={systolicBp}
+                  onChange={(e) => setSystolicBp(Number(e.target.value))}
+                  required
+                  className="w-full px-2 py-1.5 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white"
                 />
               </div>
+              <span className="text-[10px] text-slate-400 mt-1 block">mmHg</span>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+              <label className="font-bold text-slate-700 block mb-1">Diastolic BP</label>
+              <input
+                type="number"
+                value={diastolicBp}
+                onChange={(e) => setDiastolicBp(Number(e.target.value))}
+                required
+                className="w-full px-2 py-1.5 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white"
+              />
+              <span className="text-[10px] text-slate-400 mt-1 block">mmHg</span>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+              <label className="font-bold text-slate-700 block mb-1">Blood Glucose</label>
+              <input
+                type="number"
+                value={glucose}
+                onChange={(e) => setGlucose(Number(e.target.value))}
+                required
+                className="w-full px-2 py-1.5 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white"
+              />
+              <span className="text-[10px] text-slate-400 mt-1 block">mg/dL</span>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+              <label className="font-bold text-slate-700 block mb-1">Heart Rate</label>
+              <input
+                type="number"
+                value={heartRate}
+                onChange={(e) => setHeartRate(Number(e.target.value))}
+                required
+                className="w-full px-2 py-1.5 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white"
+              />
+              <span className="text-[10px] text-slate-400 mt-1 block">bpm</span>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+              <label className="font-bold text-slate-700 block mb-1">SpO2</label>
+              <input
+                type="number"
+                value={spo2}
+                onChange={(e) => setSpo2(Number(e.target.value))}
+                required
+                className="w-full px-2 py-1.5 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white"
+              />
+              <span className="text-[10px] text-slate-400 mt-1 block">%</span>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+              <label className="font-bold text-slate-700 block mb-1">Temp</label>
+              <input
+                type="number"
+                step="0.1"
+                value={temperature}
+                onChange={(e) => setTemperature(Number(e.target.value))}
+                className="w-full px-2 py-1.5 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white"
+              />
+              <span className="text-[10px] text-slate-400 mt-1 block">°C</span>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Section 2: Vital Signs Input */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-4">
-        <h2 className="text-base font-extrabold text-slate-900">
-          2. Hemodynamic Vital Signs
-        </h2>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
-          <div>
-            <label className="font-bold text-slate-700 block mb-1">Systolic BP (mmHg)</label>
-            <input
-              type="number"
-              value={systolicBp}
-              onChange={(e) => setSystolicBp(Number(e.target.value))}
-              required
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900"
-            />
-          </div>
-
-          <div>
-            <label className="font-bold text-slate-700 block mb-1">Diastolic BP (mmHg)</label>
-            <input
-              type="number"
-              value={diastolicBp}
-              onChange={(e) => setDiastolicBp(Number(e.target.value))}
-              required
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900"
-            />
-          </div>
-
-          <div>
-            <label className="font-bold text-slate-700 block mb-1">Blood Glucose (mg/dL)</label>
-            <input
-              type="number"
-              value={glucose}
-              onChange={(e) => setGlucose(Number(e.target.value))}
-              required
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900"
-            />
-          </div>
-
-          <div>
-            <label className="font-bold text-slate-700 block mb-1">Heart Rate (bpm)</label>
-            <input
-              type="number"
-              value={heartRate}
-              onChange={(e) => setHeartRate(Number(e.target.value))}
-              required
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900"
-            />
-          </div>
-
-          <div>
-            <label className="font-bold text-slate-700 block mb-1">SpO2 (%)</label>
-            <input
-              type="number"
-              value={spo2}
-              onChange={(e) => setSpo2(Number(e.target.value))}
-              required
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900"
-            />
-          </div>
-
-          <div>
-            <label className="font-bold text-slate-700 block mb-1">Temp (°C)</label>
-            <input
-              type="number"
-              step="0.1"
-              value={temperature}
-              onChange={(e) => setTemperature(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900"
-            />
+          <div className="flex justify-between">
+            <button
+              type="button"
+              onClick={() => setCurrentStep(3)}
+              className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentStep(5)}
+              className="px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Next: Review & Submit</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Section 3: Structured Doctor Notes */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-4">
-        <h2 className="text-base font-extrabold text-slate-900">
-          3. Physician Clinical Narrative & Orders
-        </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-          <div>
-            <label className="font-bold text-slate-700 block mb-1">Clinical Observation</label>
-            <textarea
-              rows={2}
-              value={clinicalObservation}
-              onChange={(e) => setClinicalObservation(e.target.value)}
-              placeholder="e.g. Right facial droop with pronator weakness..."
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500/20"
-            />
+      {/* STEP 5: CLINICAL NOTES & AI TRIAGE SUBMIT */}
+      {currentStep === 5 && (
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-black text-slate-900">
+                Step 5: Physician Clinical Notes & AI Triage
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Review all source facts before generating the multi-modal AI urgency prediction.
+              </p>
+            </div>
+            <span className="text-[10px] font-mono bg-teal-50 text-teal-800 border border-teal-200 px-2 py-0.5 rounded">
+              READY FOR AI
+            </span>
           </div>
 
-          <div>
-            <label className="font-bold text-slate-700 block mb-1">Immediate Action / Orders</label>
-            <textarea
-              rows={2}
-              value={immediateAction}
-              onChange={(e) => setImmediateAction(e.target.value)}
-              placeholder="e.g. Code Stroke pre-notification, CTA ordered..."
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500/20"
-            />
+          <div className="space-y-3 text-xs">
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Physician Clinical Narrative</label>
+              <textarea
+                rows={2}
+                value={clinicalObservation}
+                onChange={(e) => setClinicalObservation(e.target.value)}
+                placeholder="e.g. Acute right facial asymmetry and arm pronator drift observed during exam..."
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500/20"
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Immediate Action / Orders</label>
+              <textarea
+                rows={2}
+                value={immediateAction}
+                onChange={(e) => setImmediateAction(e.target.value)}
+                placeholder="e.g. Initiate Stroke Protocol, notify nearest emergency department..."
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500/20"
+              />
+            </div>
+          </div>
+
+          {/* Submission Gate */}
+          <div className="p-4 bg-teal-50/60 rounded-2xl border border-teal-200 flex items-start gap-3">
+            <ShieldCheck className="w-5 h-5 text-teal-700 shrink-0 mt-0.5" />
+            <div className="text-xs text-teal-900 leading-relaxed">
+              <strong>Clinical Decision Gate:</strong> Submitting this encounter will invoke the multi-modal AI urgency model (v1.0.0). Results will be stored in Layer 2 and require your final authorization before emergency dispatch.
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-4">
+            <button
+              type="button"
+              onClick={() => setCurrentStep(4)}
+              className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+            >
+              Back
+            </button>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-8 py-3.5 bg-teal-700 hover:bg-teal-800 text-white rounded-2xl text-xs font-black flex items-center gap-2 shadow-md shadow-teal-700/20 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <Sparkles className="w-4 h-4 text-teal-300" />
+              <span>{isSubmitting ? 'Running AI Stratification...' : 'Assess Stroke Urgency & Triage'}</span>
+            </button>
           </div>
         </div>
-      </div>
-
-      {/* Submit Button */}
-      <div className="flex items-center justify-end gap-3 pt-4">
-        <button
-          type="button"
-          onClick={() => navigate('/dashboard')}
-          className="px-5 py-3 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-2xl"
-        >
-          Cancel
-        </button>
-
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="px-8 py-3.5 bg-brand-600 hover:bg-brand-700 text-white rounded-2xl text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-brand-600/20 transition-all disabled:bg-slate-400"
-        >
-          <Sparkles className="w-4 h-4" />
-          <span>{isSubmitting ? 'Calculating Urgency...' : 'Assess Stroke Urgency & Triage'}</span>
-        </button>
-      </div>
+      )}
 
       {/* Camera Screening Modals */}
       <FaceScreeningModal
@@ -658,6 +889,7 @@ export const NewAssessmentPage: React.FC = () => {
           setSpeechResult(res.doctorConfirmation === 'abnormal' ? 'possible_speech_difficulty' : 'normal');
         }}
       />
+
     </form>
   );
 };
