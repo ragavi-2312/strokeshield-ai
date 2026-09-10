@@ -883,7 +883,20 @@ export const NewAssessmentPage: React.FC = () => {
           setArmAiObservation(res.aiObservation);
           setArmDoctorConfirmation(res.doctorConfirmation);
           setArmResult(res.doctorConfirmation !== 'normal' ? 'possible_weakness' : 'normal');
-          setCameraMetrics((prev) => ({ ...prev, arm_drift_delta_px: res.driftDeltaPx }));
+          setCameraMetrics((prev) => ({
+            ...prev,
+            arm_drift_delta_px: res.driftDeltaPx,
+            arm_drift_angle_deg: res.driftAngleDeg,
+            arm_motor_symmetry_percent: res.motorSymmetryPercent,
+            arm_affected_side: res.affectedSide,
+            arm_drift_velocity: res.driftVelocity,
+            arm_analysis_quality: res.analysisQuality,
+            arm_valid_frames: res.validFramesCount,
+            arm_total_frames: res.totalFramesCount,
+            arm_stability_mad: res.stabilityMad,
+            arm_doctor_confirmation: res.doctorConfirmation,
+            arm_doctor_notes: res.doctorNotes,
+          }));
         }}
       />
 

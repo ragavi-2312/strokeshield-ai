@@ -115,6 +115,18 @@ export interface CameraAssessmentData {
   face_symmetry_score?: number;
   arm_drift_detected?: boolean;
   arm_drift_delta_px?: number;
+  arm_drift_angle_deg?: number;
+  arm_drift_percent?: number;
+  arm_motor_symmetry_percent?: number;
+  arm_affected_side?: 'left' | 'right' | 'symmetric';
+  arm_drift_pattern?: string;
+  arm_drift_velocity?: number;
+  arm_analysis_quality?: 'HIGH' | 'MEDIUM' | 'LOW';
+  arm_valid_frames?: number;
+  arm_total_frames?: number;
+  arm_stability_mad?: number;
+  arm_doctor_confirmation?: string;
+  arm_doctor_notes?: string;
   speech_mismatch_detected?: boolean;
   model_name?: string;
   model_version?: string;

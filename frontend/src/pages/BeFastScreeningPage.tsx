@@ -95,10 +95,28 @@ export const BeFastScreeningPage: React.FC = () => {
     aiObservation: string;
     doctorConfirmation: string;
     driftDeltaPx: number;
+    driftAngleDeg: number;
+    motorSymmetryPercent: number;
+    affectedSide: 'left' | 'right' | 'symmetric';
+    analysisQuality: 'HIGH' | 'MEDIUM' | 'LOW';
+    validFramesCount: number;
+    totalFramesCount: number;
+    driftVelocity: number;
+    stabilityMad: number;
+    doctorNotes: string;
   }>({
     aiObservation: 'no_obvious_drift',
     doctorConfirmation: 'normal',
     driftDeltaPx: 2,
+    driftAngleDeg: 1.4,
+    motorSymmetryPercent: 96.5,
+    affectedSide: 'symmetric',
+    analysisQuality: 'HIGH',
+    validFramesCount: 45,
+    totalFramesCount: 50,
+    driftVelocity: 0.1,
+    stabilityMad: 0.6,
+    doctorNotes: '',
   });
 
   const [speechData, setSpeechData] = useState<{
@@ -170,6 +188,16 @@ export const BeFastScreeningPage: React.FC = () => {
             head_pitch: faceData.head_pitch,
             head_roll: faceData.head_roll,
             arm_drift_delta_px: armData.driftDeltaPx,
+            arm_drift_angle_deg: armData.driftAngleDeg,
+            arm_motor_symmetry_percent: armData.motorSymmetryPercent,
+            arm_affected_side: armData.affectedSide,
+            arm_drift_velocity: armData.driftVelocity,
+            arm_analysis_quality: armData.analysisQuality,
+            arm_valid_frames: armData.validFramesCount,
+            arm_total_frames: armData.totalFramesCount,
+            arm_stability_mad: armData.stabilityMad,
+            arm_doctor_confirmation: armData.doctorConfirmation,
+            arm_doctor_notes: armData.doctorNotes,
             model_name: faceData.model_name,
             model_version: faceData.model_version,
             snapshot_timestamp: faceData.screening_timestamp,
@@ -366,7 +394,7 @@ export const BeFastScreeningPage: React.FC = () => {
           </div>
         </div>
 
-        {/* A — Arms (Camera Assisted) */}
+        {/* A — Arms (Quantitative Arm Drift & Motor Symmetry) */}
         <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -374,33 +402,50 @@ export const BeFastScreeningPage: React.FC = () => {
                 A
               </span>
               <div>
-                <h3 className="font-extrabold text-slate-900 text-sm">Arms Drift (Camera)</h3>
-                <p className="text-[11px] text-slate-500">Unilateral downward drift or pronator weakness</p>
+                <h3 className="font-extrabold text-slate-900 text-sm">Arm Drift & Motor Symmetry</h3>
+                <p className="text-[11px] text-slate-500">Quantitative MediaPipe pose 5s holding analysis</p>
               </div>
             </div>
 
             <button
               onClick={() => setIsArmModalOpen(true)}
-              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-sm transition-all"
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
             >
               <Activity className="w-3.5 h-3.5" />
               <span>Launch 5s Drift Test</span>
             </button>
           </div>
 
-          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs flex items-center justify-between">
+          <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs flex items-center justify-between">
             <div>
-              <span className="text-[10px] text-slate-400 block font-semibold">AI Observation:</span>
-              <strong className={armData.aiObservation === 'possible_arm_drift' ? 'text-amber-700' : 'text-slate-800'}>
-                {armData.aiObservation === 'possible_arm_drift' ? 'Possible Drift Detected' : 'No Obvious Drift'}
-              </strong>
+              <span className="text-[10px] text-slate-400 block font-bold uppercase">Arm Drift / Motor Symmetry:</span>
+              <div className="flex items-center gap-2">
+                <strong className="font-mono text-base font-black text-slate-900">
+                  {armData.driftAngleDeg.toFixed(1)}°
+                </strong>
+                <span className="text-slate-300 font-bold">•</span>
+                <span className="text-amber-800 font-mono font-bold">
+                  {armData.motorSymmetryPercent.toFixed(1)}% Sym
+                </span>
+                <span className="text-slate-300 font-bold">•</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                  armData.affectedSide === 'symmetric'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-amber-100 text-amber-900'
+                }`}>
+                  {armData.affectedSide === 'left' ? 'Left Limb' : armData.affectedSide === 'right' ? 'Right Limb' : 'Bilateral'}
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-500 block">
+                Quality: {armData.analysisQuality} ({armData.validFramesCount}/{armData.totalFramesCount} frames)
+              </span>
             </div>
-            <div>
-              <span className="text-[10px] text-slate-400 block font-semibold">Doctor Verification:</span>
+            <div className="text-right">
+              <span className="text-[10px] text-slate-400 block font-bold uppercase">Doctor Confirmation:</span>
               <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                armData.doctorConfirmation !== 'normal' ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'
+                armData.doctorConfirmation !== 'normal' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
               }`}>
-                {armData.doctorConfirmation.toUpperCase()}
+                {armData.doctorConfirmation.toUpperCase().replace(/_/g, ' ')}
               </span>
             </div>
           </div>

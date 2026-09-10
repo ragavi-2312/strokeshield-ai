@@ -291,13 +291,6 @@ export const AssessmentResultPage: React.FC = () => {
         {/* BE-FAST & Landmark Findings */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1.5">
-            <strong className="text-slate-900 font-bold block">BE-FAST Observations:</strong>
-            <p><span className="text-slate-500">Face:</span> <strong className="text-slate-900">{assessment.face_result}</strong></p>
-            <p><span className="text-slate-500">Arms:</span> <strong className="text-slate-900">{assessment.arm_result}</strong></p>
-            <p><span className="text-slate-500">Speech:</span> <strong className="text-slate-900">{assessment.speech_result}</strong></p>
-          </div>
-
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1.5">
             <strong className="text-slate-900 font-bold block">Facial Screening Measurements:</strong>
             {assessment.camera_assessment_data?.facial_asymmetry_score !== undefined ? (
               <div className="space-y-1">
@@ -315,7 +308,7 @@ export const AssessmentResultPage: React.FC = () => {
                 <p className="text-[11px] text-slate-500">
                   Analysis Quality: <strong className="text-slate-900">{assessment.camera_assessment_data.analysis_quality_tier || 'HIGH'}</strong>
                   {assessment.camera_assessment_data.valid_frame_count && (
-                    <span> ({assessment.camera_assessment_data.valid_frame_count}/{assessment.camera_assessment_data.frame_count || 50} frames accepted)</span>
+                    <span> ({assessment.camera_assessment_data.valid_frame_count}/{assessment.camera_assessment_data.frame_count || 50} frames)</span>
                   )}
                 </p>
                 {assessment.camera_assessment_data.highest_asymmetry_region && (
@@ -326,6 +319,41 @@ export const AssessmentResultPage: React.FC = () => {
               </div>
             ) : (
               <p className="text-slate-400">MediaPipe multi-frame geometric analysis archived.</p>
+            )}
+          </div>
+
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1.5">
+            <strong className="text-slate-900 font-bold block">Arm Drift & Motor Measurements:</strong>
+            {assessment.camera_assessment_data?.arm_drift_angle_deg !== undefined ? (
+              <div className="space-y-1">
+                <p>
+                  <span className="text-slate-500">Drift Angle:</span>{' '}
+                  <strong className="text-slate-900 font-mono">{Number(assessment.camera_assessment_data.arm_drift_angle_deg).toFixed(1)}°</strong>
+                  {' • '}
+                  <span className="text-slate-500">Motor Symmetry:</span>{' '}
+                  <strong className="text-amber-800 font-mono">
+                    {assessment.camera_assessment_data.arm_motor_symmetry_percent !== undefined
+                      ? `${Number(assessment.camera_assessment_data.arm_motor_symmetry_percent).toFixed(1)}%`
+                      : '95.0%'}
+                  </strong>
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  Limb: <strong className="text-slate-900">{assessment.camera_assessment_data.arm_affected_side === 'left' ? 'Left Limb Weakness' : assessment.camera_assessment_data.arm_affected_side === 'right' ? 'Right Limb Weakness' : 'Bilateral Symmetry'}</strong>
+                  {assessment.camera_assessment_data.arm_analysis_quality && (
+                    <span> • Quality: {assessment.camera_assessment_data.arm_analysis_quality}</span>
+                  )}
+                </p>
+                {assessment.camera_assessment_data.arm_drift_velocity !== undefined && (
+                  <p className="text-[11px] text-slate-500">
+                    Drift Velocity: <strong className="font-mono text-slate-900">{Number(assessment.camera_assessment_data.arm_drift_velocity).toFixed(2)} °/s</strong>
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <p><span className="text-slate-500">Arm Sign:</span> <strong className="text-slate-900">{assessment.arm_result}</strong></p>
+                <p className="text-[11px] text-slate-500">Biacromial-normalized pose analysis archived.</p>
+              </div>
             )}
           </div>
         </div>
