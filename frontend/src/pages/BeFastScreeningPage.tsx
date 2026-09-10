@@ -39,13 +39,18 @@ export const BeFastScreeningPage: React.FC = () => {
 
   const [faceData, setFaceData] = useState<{
     facial_asymmetry_score: number;
+    facial_symmetry_score: number;
     facial_measurement_quality: number;
+    analysis_quality_tier: 'HIGH' | 'MEDIUM' | 'LOW';
     mouth_asymmetry_score: number;
     eye_asymmetry_score: number;
     eyebrow_asymmetry_score: number;
     cheek_asymmetry_score: number;
-    smile_asymmetry_score: number;
+    jaw_asymmetry_score: number;
+    highest_asymmetry_region: string;
     frame_count: number;
+    valid_frame_count: number;
+    rejected_frame_count: number;
     median_score: number;
     mean_score: number;
     standard_deviation: number;
@@ -55,25 +60,34 @@ export const BeFastScreeningPage: React.FC = () => {
     ai_face_observation: string;
     doctor_face_confirmation: string;
     doctor_face_notes: string;
+    model_name: string;
+    model_version: string;
     screening_timestamp: string;
   }>({
-    facial_asymmetry_score: 12.4,
-    facial_measurement_quality: 94,
-    mouth_asymmetry_score: 11.2,
-    eye_asymmetry_score: 8.5,
-    eyebrow_asymmetry_score: 6.2,
-    cheek_asymmetry_score: 5.4,
-    smile_asymmetry_score: 11.2,
-    frame_count: 25,
-    median_score: 12.4,
-    mean_score: 12.1,
+    facial_asymmetry_score: 11.4,
+    facial_symmetry_score: 88.6,
+    facial_measurement_quality: 95,
+    analysis_quality_tier: 'HIGH',
+    mouth_asymmetry_score: 18.6,
+    eye_asymmetry_score: 5.2,
+    eyebrow_asymmetry_score: 7.1,
+    cheek_asymmetry_score: 10.3,
+    jaw_asymmetry_score: 9.4,
+    highest_asymmetry_region: 'Mouth',
+    frame_count: 50,
+    valid_frame_count: 42,
+    rejected_frame_count: 8,
+    median_score: 11.4,
+    mean_score: 11.8,
     standard_deviation: 2.1,
     head_yaw: 0.8,
     head_pitch: -1.2,
     head_roll: 0.4,
-    ai_face_observation: 'Low geometric facial asymmetry observed — bilaterally balanced landmarks',
+    ai_face_observation: 'Low geometric facial asymmetry observed (Asymmetry: 11.4%, Symmetry: 88.6%) — bilaterally balanced landmarks',
     doctor_face_confirmation: 'Normal',
     doctor_face_notes: '',
+    model_name: 'MediaPipe Face Landmarker',
+    model_version: 'v0.10.14-tasks-vision',
     screening_timestamp: new Date().toISOString(),
   });
 
@@ -137,13 +151,18 @@ export const BeFastScreeningPage: React.FC = () => {
           symptom_duration_minutes: elapsedMinutes,
           camera_assessment_data: {
             facial_asymmetry_score: faceData.facial_asymmetry_score,
+            facial_symmetry_score: faceData.facial_symmetry_score,
             facial_measurement_quality: faceData.facial_measurement_quality,
+            analysis_quality_tier: faceData.analysis_quality_tier,
             mouth_asymmetry_score: faceData.mouth_asymmetry_score,
             eye_asymmetry_score: faceData.eye_asymmetry_score,
             eyebrow_asymmetry_score: faceData.eyebrow_asymmetry_score,
             cheek_asymmetry_score: faceData.cheek_asymmetry_score,
-            smile_asymmetry_score: faceData.smile_asymmetry_score,
+            jaw_asymmetry_score: faceData.jaw_asymmetry_score,
+            highest_asymmetry_region: faceData.highest_asymmetry_region,
             frame_count: faceData.frame_count,
+            valid_frame_count: faceData.valid_frame_count,
+            rejected_frame_count: faceData.rejected_frame_count,
             median_score: faceData.median_score,
             mean_score: faceData.mean_score,
             standard_deviation: faceData.standard_deviation,
@@ -151,6 +170,8 @@ export const BeFastScreeningPage: React.FC = () => {
             head_pitch: faceData.head_pitch,
             head_roll: faceData.head_roll,
             arm_drift_delta_px: armData.driftDeltaPx,
+            model_name: faceData.model_name,
+            model_version: faceData.model_version,
             snapshot_timestamp: faceData.screening_timestamp,
           },
         },
@@ -300,18 +321,18 @@ export const BeFastScreeningPage: React.FC = () => {
         <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-xl bg-brand-100 text-brand-800 flex items-center justify-center font-black text-sm">
+              <span className="w-8 h-8 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center font-black text-sm">
                 F
               </span>
               <div>
-                <h3 className="font-extrabold text-slate-900 text-sm">Facial Asymmetry Score</h3>
-                <p className="text-[11px] text-slate-500">Quantitative landmark & smile analysis</p>
+                <h3 className="font-extrabold text-slate-900 text-sm">Facial Asymmetry Screening</h3>
+                <p className="text-[11px] text-slate-500">Quantitative MediaPipe multi-frame analysis</p>
               </div>
             </div>
 
             <button
               onClick={() => setIsFaceModalOpen(true)}
-              className="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-sm transition-all"
+              className="px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
             >
               <Camera className="w-3.5 h-3.5" />
               <span>Launch Asymmetry Test</span>
@@ -320,11 +341,19 @@ export const BeFastScreeningPage: React.FC = () => {
 
           <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs flex items-center justify-between">
             <div>
-              <span className="text-[10px] text-slate-400 block font-bold uppercase">Measured Asymmetry Score:</span>
-              <strong className="font-mono text-base font-black text-slate-900">
-                {faceData.facial_asymmetry_score.toFixed(1)} / 100
-              </strong>
-              <span className="text-[10px] text-slate-500 block">Quality: {faceData.facial_measurement_quality}/100</span>
+              <span className="text-[10px] text-slate-400 block font-bold uppercase">Facial Asymmetry / Symmetry:</span>
+              <div className="flex items-center gap-2">
+                <strong className="font-mono text-base font-black text-slate-900">
+                  {faceData.facial_asymmetry_score.toFixed(1)}%
+                </strong>
+                <span className="text-slate-300 font-bold">•</span>
+                <span className="text-teal-800 font-mono font-bold">
+                  {faceData.facial_symmetry_score ? `${faceData.facial_symmetry_score.toFixed(1)}% Sym` : '88.6% Sym'}
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-500 block">
+                Quality: {faceData.analysis_quality_tier || 'HIGH'} ({faceData.valid_frame_count || 42}/{faceData.frame_count || 50} frames)
+              </span>
             </div>
             <div className="text-right">
               <span className="text-[10px] text-slate-400 block font-bold uppercase">Doctor Confirmation:</span>

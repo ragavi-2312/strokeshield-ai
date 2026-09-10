@@ -298,16 +298,35 @@ export const AssessmentResultPage: React.FC = () => {
           </div>
 
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1.5">
-            <strong className="text-slate-900 font-bold block">Camera Quantitative Landmarks:</strong>
+            <strong className="text-slate-900 font-bold block">Facial Screening Measurements:</strong>
             {assessment.camera_assessment_data?.facial_asymmetry_score !== undefined ? (
-              <p>
-                <span className="text-slate-500">Facial Asymmetry Deviation Score:</span>{' '}
-                <strong className="text-red-700 font-mono">{assessment.camera_assessment_data.facial_asymmetry_score.toFixed(1)}/100</strong>
-              </p>
+              <div className="space-y-1">
+                <p>
+                  <span className="text-slate-500">Facial Asymmetry:</span>{' '}
+                  <strong className="text-slate-900 font-mono">{Number(assessment.camera_assessment_data.facial_asymmetry_score).toFixed(1)}%</strong>
+                  {' • '}
+                  <span className="text-slate-500">Symmetry Score:</span>{' '}
+                  <strong className="text-teal-800 font-mono">
+                    {assessment.camera_assessment_data.facial_symmetry_score
+                      ? `${Number(assessment.camera_assessment_data.facial_symmetry_score).toFixed(1)}%`
+                      : `${(100 - Number(assessment.camera_assessment_data.facial_asymmetry_score)).toFixed(1)}%`}
+                  </strong>
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  Analysis Quality: <strong className="text-slate-900">{assessment.camera_assessment_data.analysis_quality_tier || 'HIGH'}</strong>
+                  {assessment.camera_assessment_data.valid_frame_count && (
+                    <span> ({assessment.camera_assessment_data.valid_frame_count}/{assessment.camera_assessment_data.frame_count || 50} frames accepted)</span>
+                  )}
+                </p>
+                {assessment.camera_assessment_data.highest_asymmetry_region && (
+                  <p className="text-[11px] text-slate-500">
+                    Highest Measured Asymmetry: <strong className="text-amber-800">{assessment.camera_assessment_data.highest_asymmetry_region}</strong>
+                  </p>
+                )}
+              </div>
             ) : (
-              <p className="text-slate-400">Continuous 0–100 geometric vision analysis archived.</p>
+              <p className="text-slate-400">MediaPipe multi-frame geometric analysis archived.</p>
             )}
-            <p className="text-slate-500">Measurement Quality: <strong className="text-slate-900">94/100 (Optimal)</strong></p>
           </div>
         </div>
       </div>

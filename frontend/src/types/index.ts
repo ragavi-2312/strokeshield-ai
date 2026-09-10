@@ -87,13 +87,19 @@ export interface StructuredNotes {
 
 export interface CameraAssessmentData {
   facial_asymmetry_score?: number;
+  facial_symmetry_score?: number;
   facial_measurement_quality?: number;
+  analysis_quality_tier?: 'HIGH' | 'MEDIUM' | 'LOW';
   mouth_asymmetry_score?: number;
   eye_asymmetry_score?: number;
   eyebrow_asymmetry_score?: number;
   cheek_asymmetry_score?: number;
+  jaw_asymmetry_score?: number;
+  highest_asymmetry_region?: string;
   smile_asymmetry_score?: number;
   frame_count?: number;
+  valid_frame_count?: number;
+  rejected_frame_count?: number;
   median_score?: number;
   mean_score?: number;
   standard_deviation?: number;
@@ -110,6 +116,8 @@ export interface CameraAssessmentData {
   arm_drift_detected?: boolean;
   arm_drift_delta_px?: number;
   speech_mismatch_detected?: boolean;
+  model_name?: string;
+  model_version?: string;
   snapshot_timestamp?: string;
 }
 
