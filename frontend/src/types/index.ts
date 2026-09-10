@@ -128,6 +128,16 @@ export interface CameraAssessmentData {
   arm_doctor_confirmation?: string;
   arm_doctor_notes?: string;
   speech_mismatch_detected?: boolean;
+  speech_articulation_score?: number;
+  speech_fluency_score?: number;
+  speech_pause_ratio?: number;
+  speech_speaking_rate?: number;
+  speech_pattern?: string;
+  speech_analysis_quality?: 'HIGH' | 'MEDIUM' | 'LOW';
+  speech_transcript?: string;
+  speech_target_sentence?: string;
+  speech_doctor_confirmation?: string;
+  speech_doctor_notes?: string;
   model_name?: string;
   model_version?: string;
   snapshot_timestamp?: string;

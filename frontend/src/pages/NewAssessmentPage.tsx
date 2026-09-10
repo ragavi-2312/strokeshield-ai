@@ -907,6 +907,20 @@ export const NewAssessmentPage: React.FC = () => {
           setSpeechAiObservation(res.aiObservation);
           setSpeechDoctorConfirmation(res.doctorConfirmation);
           setSpeechResult(res.doctorConfirmation === 'abnormal' ? 'possible_speech_difficulty' : 'normal');
+          setCameraMetrics((prev) => ({
+            ...prev,
+            speech_mismatch_detected: res.doctorConfirmation === 'abnormal',
+            speech_articulation_score: res.articulationScore,
+            speech_fluency_score: res.fluencyScore,
+            speech_pause_ratio: res.pauseRatio,
+            speech_speaking_rate: res.speakingRate,
+            speech_pattern: res.speechPattern,
+            speech_analysis_quality: res.analysisQuality,
+            speech_transcript: res.transcript,
+            speech_target_sentence: res.targetSentence,
+            speech_doctor_confirmation: res.doctorConfirmation,
+            speech_doctor_notes: res.doctorNotes,
+          }));
         }}
       />
 
